@@ -3,11 +3,12 @@
 #define TAAMAK_IMPLEMENTATION
 #include "taamak.h"
 
-int main(void) {
-        int x;
-        x = add(1, 2);
+int main(void)
+{
+    int x;
+    x = add(1, 2);
 
-        printf("x = %d\n", x);
+    printf("x = %d\n", x);
 
-        return 0;
+    return 0;
 }

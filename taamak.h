@@ -89,7 +89,7 @@ static bool tmk__util_assert_eq(double a, double b)
  * TODO: descriptions
  */
 
-static inline double tmk__coefficients_concentrated_radius(double a, double b, double c)
+static inline double tmk__coefficients_radius(double a, double b, double c)
 {
         return sqrt(a * a + b * b + c * c);
 }
@@ -267,8 +267,8 @@ static void tmk__coefficients_concentrated_stress_x(double *coefficients,
 
         double c = force_point->z;
 
-        double r1 = tmk__coefficients_concentrated_radius(x, y, z - c);
-        double r2 = tmk__coefficients_concentrated_radius(x, y, z + c);
+        double r1 = tmk__coefficients_radius(x, y, z - c);
+        double r2 = tmk__coefficients_radius(x, y, z + c);
 
         double poissons_ratio = halfspace->poissons_ratio;
 
@@ -291,8 +291,8 @@ static void tmk__coefficients_concentrated_stress_y(double *coefficients,
 
         double c = force_point->z;
 
-        double r1 = tmk__coefficients_concentrated_radius(x, y, z - c);
-        double r2 = tmk__coefficients_concentrated_radius(x, y, z + c);
+        double r1 = tmk__coefficients_radius(x, y, z - c);
+        double r2 = tmk__coefficients_radius(x, y, z + c);
 
         double poissons_ratio = halfspace->poissons_ratio;
 
@@ -315,8 +315,8 @@ static void tmk__coefficients_concentrated_stress_z(double *coefficients,
 
         double c = force_point->z;
 
-        double r1 = tmk__coefficients_concentrated_radius(x, y, z - c);
-        double r2 = tmk__coefficients_concentrated_radius(x, y, z + c);
+        double r1 = tmk__coefficients_radius(x, y, z - c);
+        double r2 = tmk__coefficients_radius(x, y, z + c);
 
         double poissons_ratio = halfspace->poissons_ratio;
 
@@ -339,8 +339,8 @@ static void tmk__coefficients_concentrated_displacement_x(double *coefficients,
 
         double c = force_point->z;
 
-        double r1 = tmk__coefficients_concentrated_radius(x, y, z - c);
-        double r2 = tmk__coefficients_concentrated_radius(x, y, z + c);
+        double r1 = tmk__coefficients_radius(x, y, z - c);
+        double r2 = tmk__coefficients_radius(x, y, z + c);
 
         double youngs_modulus = halfspace->youngs_modulus;
         double poissons_ratio = halfspace->poissons_ratio;
@@ -361,8 +361,8 @@ static void tmk__coefficients_concentrated_displacement_y(double *coefficients,
 
         double c = force_point->z;
 
-        double r1 = tmk__coefficients_concentrated_radius(x, y, z - c);
-        double r2 = tmk__coefficients_concentrated_radius(x, y, z + c);
+        double r1 = tmk__coefficients_radius(x, y, z - c);
+        double r2 = tmk__coefficients_radius(x, y, z + c);
 
         double youngs_modulus = halfspace->youngs_modulus;
         double poissons_ratio = halfspace->poissons_ratio;
@@ -383,8 +383,8 @@ static void tmk__coefficients_concentrated_displacement_z(double *coefficients,
 
         double c = force_point->z;
 
-        double r1 = tmk__coefficients_concentrated_radius(x, y, z - c);
-        double r2 = tmk__coefficients_concentrated_radius(x, y, z + c);
+        double r1 = tmk__coefficients_radius(x, y, z - c);
+        double r2 = tmk__coefficients_radius(x, y, z + c);
 
         double youngs_modulus = halfspace->youngs_modulus;
         double poissons_ratio = halfspace->poissons_ratio;
@@ -392,6 +392,120 @@ static void tmk__coefficients_concentrated_displacement_z(double *coefficients,
         coefficients[0] = tmk__coefficients_concentrated_ux_z(x, z, c, r1, r2, youngs_modulus, poissons_ratio);
         coefficients[1] = tmk__coefficients_concentrated_uy_z(y, z, c, r1, r2, youngs_modulus, poissons_ratio);
         coefficients[2] = tmk__coefficients_concentrated_uz_z(z, c, r1, r2, youngs_modulus, poissons_ratio);
+}
+
+/**
+ * Half-space solution for a squared stress patch
+ * TODO: descriptions
+ */
+
+static inline double tmk__coefficients_distributed_a_xx(double x, double y, double z, 
+                                                        double poissons_ratio)
+{
+        return 2.0 * poissons_ratio * (atan2(x, y) - atan2(z * x, y * tmk__coefficients_radius(x, y, z))) + atan2(y, x) - atan2(z * y, x * tmk__coefficients_radius(x, y, z)) - x * y * z / (tmk__coefficients_radius(x, y, z) * (x * x + z * z));
+}
+
+static inline double tmk__coefficients_distributed_a_yy(double x, double y, double z, 
+                                                        double poissons_ratio)
+{
+        return 2.0 * poissons_ratio * (atan2(y, x) - atan2(z * y, x * tmk__coefficients_radius(x, y, z))) + atan2(x, y) - atan2(z * x, y * tmk__coefficients_radius(x, y, z)) - x * y * z / (tmk__coefficients_radius(x, y, z) * (y * y + z * z));
+}
+
+static inline double tmk__coefficients_distributed_a_zz(double x, double y, double z)
+{
+        return atan2(y, x) + atan2(x, y) - atan2(z * y, x * tmk__coefficients_radius(x, y, z)) - atan2(z * x, y * tmk__coefficients_radius(x, y, z)) + x * y * z / (tmk__coefficients_radius(x, y, z) * (y * y + z * z)) + x * y * z / (tmk__coefficients_radius(x, y, z) * (x * x + z * z));
+}
+
+static inline double tmk__coefficients_distributed_a_yz(double x, double y, double z)
+{
+        return -1.0 * z * z * x / tmk__coefficients_radius(x, y, z) / (y * y + z * z);
+}
+
+static inline double tmk__coefficients_distributed_a_xz(double x, double y, double z)
+{
+        return -1.0 * z * z * y / tmk__coefficients_radius(x, y, z) / (x * x + z * z);
+}
+
+static inline double tmk__coefficients_distributed_a_xy(double x, double y, double z, 
+                                                        double poissons_ratio)
+{
+        return (1.0 - 2.0 * poissons_ratio) * log(tmk__coefficients_radius(x, y, z) + z) + z / tmk__coefficients_radius(x, y, z);
+}
+
+static inline double tmk__coefficients_distributed_b_x(double x, double y, double z, 
+                                                       double poissons_ratio)
+{
+        return (2.0 * poissons_ratio - 1.0) * (y * log(tmk__coefficients_radius(x, y, z) + z) + z * log(tmk__coefficients_radius(x, y, z) + y) - 2.0 * x * atan2(x, tmk__coefficients_radius(x, y, z) + y + z)) - z * log(tmk__coefficients_radius(x, y, z) + y);
+}
+
+static inline double tmk__coefficients_distributed_b_y(double x, double y, double z, 
+                                                       double poissons_ratio)
+{
+        return (2.0 * poissons_ratio - 1.0) * (x * log(tmk__coefficients_radius(x, y, z) + z) + z * log(tmk__coefficients_radius(x, y, z) + x) - 2.0 * y * atan2(y, tmk__coefficients_radius(x, y, z) + x + z)) - z * log(tmk__coefficients_radius(x, y, z) + x);
+}
+
+static inline double tmk__coefficients_distributed_b_z(double x, double y, double z, 
+                                                       double poissons_ratio)
+{
+        return 2.0 * (1.0 - poissons_ratio) * (y * log(tmk__coefficients_radius(x, y, z) + x) + x * log(tmk__coefficients_radius(x, y, z) + y) + 2.0 * z * atan2((sqrt(x * x + z * z) - x) * (tmk__coefficients_radius(x, y, z) - sqrt(x * x + z * z)), z * y)) + z * atan2(x * y, tmk__coefficients_radius(x, y, z) * z);
+}
+
+static void tmk__coefficients_distributed_stress(double *coefficients, 
+                                                 tmk_vec3 *evaluation_point, 
+                                                 tmk_load *load, 
+                                                 tmk_hs *halfspace)
+{
+        double x = evaluation_point->x - load->center.x;
+        double y = evaluation_point->y - load->center.y;
+        double z = evaluation_point->z - load->center.z;
+
+        double b = load->half_width;
+
+        double poissons_ratio = halfspace->poissons_ratio;
+
+        coefficients[0] = (tmk__coefficients_distributed_a_xx(x + b, y + b, z, poissons_ratio) + tmk__coefficients_distributed_a_xx(x - b, y - b, z, poissons_ratio) - tmk__coefficients_distributed_a_xx(x - b, y + b, z, poissons_ratio) - tmk__coefficients_distributed_a_xx(x + b, y - b, z, poissons_ratio)) / 2.0 / M_PI;
+        coefficients[1] = (tmk__coefficients_distributed_a_yy(x + b, y + b, z, poissons_ratio) + tmk__coefficients_distributed_a_yy(x - b, y - b, z, poissons_ratio) - tmk__coefficients_distributed_a_yy(x - b, y + b, z, poissons_ratio) - tmk__coefficients_distributed_a_yy(x + b, y - b, z, poissons_ratio)) / 2.0 / M_PI;
+        coefficients[2] = (tmk__coefficients_distributed_a_zz(x + b, y + b, z) + tmk__coefficients_distributed_a_zz(x - b, y - b, z) - tmk__coefficients_distributed_a_zz(x - b, y + b, z) - tmk__coefficients_distributed_a_zz(x + b, y - b, z)) / 2.0 / M_PI;
+        coefficients[3] = (tmk__coefficients_distributed_a_yz(x + b, y + b, z) + tmk__coefficients_distributed_a_yz(x - b, y - b, z) - tmk__coefficients_distributed_a_yz(x - b, y + b, z) - tmk__coefficients_distributed_a_yz(x + b, y - b, z)) / 2.0 / M_PI;
+        coefficients[4] = (tmk__coefficients_distributed_a_xz(x + b, y + b, z) + tmk__coefficients_distributed_a_xz(x - b, y - b, z) - tmk__coefficients_distributed_a_xz(x - b, y + b, z) - tmk__coefficients_distributed_a_xz(x + b, y - b, z)) / 2.0 / M_PI;
+        coefficients[5] = (tmk__coefficients_distributed_a_xy(x + b, y + b, z, poissons_ratio) + tmk__coefficients_distributed_a_xy(x - b, y - b, z, poissons_ratio) - tmk__coefficients_distributed_a_xy(x - b, y + b, z, poissons_ratio) - tmk__coefficients_distributed_a_xy(x + b, y - b, z, poissons_ratio)) / 2.0 / M_PI;
+}
+
+static void tmk__coefficients_distributed_displacement(double *coefficients, 
+                                                       tmk_vec3 *evaluation_point, 
+                                                       tmk_load *load, 
+                                                       tmk_hs *halfspace)
+{
+        double x = evaluation_point->x - load->center.x;
+        double y = evaluation_point->y - load->center.y;
+        double z = evaluation_point->z - load->center.z;
+
+        double b = load->half_width;
+
+        double youngs_modulus = halfspace->youngs_modulus;
+        double poissons_ratio = halfspace->poissons_ratio;
+
+        coefficients[0] = (1.0 + poissons_ratio) / 2.0 / M_PI / youngs_modulus * (tmk__coefficients_distributed_b_x(x + b, y + b, z, poissons_ratio) + tmk__coefficients_distributed_b_x(x - b, y - b, z, poissons_ratio) - tmk__coefficients_distributed_b_x(x - b, y + b, z, poissons_ratio) - tmk__coefficients_distributed_b_x(x + b, y - b, z, poissons_ratio));
+        coefficients[1] = (1.0 + poissons_ratio) / 2.0 / M_PI / youngs_modulus * (tmk__coefficients_distributed_b_y(x + b, y + b, z, poissons_ratio) + tmk__coefficients_distributed_b_y(x - b, y - b, z, poissons_ratio) - tmk__coefficients_distributed_b_y(x - b, y + b, z, poissons_ratio) - tmk__coefficients_distributed_b_y(x + b, y - b, z, poissons_ratio));
+        coefficients[2] = (1.0 + poissons_ratio) / 2.0 / M_PI / youngs_modulus * (tmk__coefficients_distributed_b_z(x + b, y + b, z, poissons_ratio) + tmk__coefficients_distributed_b_z(x - b, y - b, z, poissons_ratio) - tmk__coefficients_distributed_b_z(x - b, y + b, z, poissons_ratio) - tmk__coefficients_distributed_b_z(x + b, y - b, z, poissons_ratio));
+}
+
+static double tmk__coefficients_distributed_uz(tmk_vec3 *evaluation_point, 
+                                               tmk_load *load, 
+                                               tmk_hs *halfspace)
+{
+        double x = evaluation_point->x - load->center.x;
+        double y = evaluation_point->y - load->center.y;
+        double z = evaluation_point->z - load->center.z;
+
+        double b = load->half_width;
+
+        double youngs_modulus = halfspace->youngs_modulus;
+        double poissons_ratio = halfspace->poissons_ratio;
+
+        double uz = (1.0 + poissons_ratio) / 2.0 / M_PI / youngs_modulus * (tmk__coefficients_distributed_b_z(x + b, y + b, z, poissons_ratio) + tmk__coefficients_distributed_b_z(x - b, y - b, z, poissons_ratio) - tmk__coefficients_distributed_b_z(x - b, y + b, z, poissons_ratio) - tmk__coefficients_distributed_b_z(x + b, y - b, z, poissons_ratio));
+
+        return uz;
 }
 
 static void tmk__geometry_grid_uniform(tmk_vec3 *grid, 

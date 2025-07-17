@@ -508,6 +508,60 @@ static double tmk__coefficients_distributed_uz(tmk_vec3 *evaluation_point,
         return uz;
 }
 
+/**
+ * Tensor transformations
+ * TODO: descriptions
+ */
+
+ static void tmk__coefficients_tensor_transformation_y(double *tensor, double degree)
+{
+        double radian = degree * M_PI / 180.0;
+
+        double xx = tensor[0];
+        double zz = tensor[2];
+        double yz = tensor[3];
+        double xz = tensor[4];
+        double xy = tensor[5];
+
+        tensor[2] = zz * cos(radian) * cos(radian) + xx * sin(radian) * sin(radian) + xz * sin(2.0 * radian);
+        tensor[3] = yz * cos(radian) + xy * sin(radian);
+        tensor[4] = xz * cos(2.0 * radian) + (xx - zz) * cos(radian) * sin(radian);
+}
+
+static void tmk__coefficients_tensor_transformation_y_full(double *tensor, double degree)
+{
+        double radian = degree * M_PI / 180.0;
+
+        double xx = tensor[0];
+        double zz = tensor[2];
+        double yz = tensor[3];
+        double xz = tensor[4];
+        double xy = tensor[5];
+
+        tensor[0] = xx * cos(radian) * cos(radian) - 2.0 * xz * cos(radian) * sin(radian) + zz * sin(radian) * sin(radian);
+        tensor[2] = zz * cos(radian) * cos(radian) + xx * sin(radian) * sin(radian) + xz * sin(2.0 * radian);
+        tensor[3] = yz * cos(radian) + xy * sin(radian);
+        tensor[4] = xz * cos(2.0 * radian) + (xx - zz) * cos(radian) * sin(radian);
+        tensor[5] = xy * cos(radian) - yz * sin(radian);
+}
+
+static void tmk__coefficients_tensor_transformation_z_full(double *tensor, double degree)
+{
+        double radian = degree * M_PI / 180.0;
+
+        double xx = tensor[0];
+        double yy = tensor[1];
+        double yz = tensor[3];
+        double xz = tensor[4];
+        double xy = tensor[5];
+
+        tensor[0] = xx * cos(radian) * cos(radian) + yy * sin(radian) * sin(radian) + xy * sin(2.0 * radian);
+        tensor[1] = yy * cos(radian) * cos(radian) - 2.0 * xy * cos(radian) * sin(radian) + xx * sin(radian) * sin(radian);
+        tensor[3] = yz * cos(radian) - xz * sin(radian);
+        tensor[4] = xz * cos(radian) + yz * sin(radian);
+        tensor[5] = xy * cos(2.0 * radian) + (yy - xx) * cos(radian) * sin(radian);
+}
+
 static void tmk__geometry_grid_uniform(tmk_vec3 *grid, 
                                        const int n_side,
                                        const double h, 
@@ -529,12 +583,12 @@ static void tmk__geometry_grid_uniform(tmk_vec3 *grid,
 
                         grid[idx].x = x * cos(-1.0 * radian);
                         if (tmk__util_assert_eq(grid[idx].x - load->center.x, 
-                                                 load->half_width))
+                                                load->half_width))
                                 grid[idx].x += TMK_GEOM_EPSILON;
 
                         grid[idx].y = y;
                         if (tmk__util_assert_eq(grid[idx].y - load->center.y, 
-                                                 load->half_width))
+                                                load->half_width))
                                 grid[idx].y += TMK_GEOM_EPSILON;
 
                         grid[idx].z = x * sin (-1.0 * radian);

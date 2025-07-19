@@ -14,11 +14,13 @@ else
 endif
 
 CC       ?= gcc
-CFLAGS   := -std=c11 -Wall -Wextra -Werror -Wno-unused-function -I../
+CFLAGS   := -std=c11 -O2 -Wall -Wextra -Werror -pedantic -Wno-unused-variable -Wno-unused-function -Wno-unused-parameter -Wno-unused-but-set-variable -I../ -I/opt/homebrew/opt/openblas/include/
+LDFLAG   := -L/opt/homebrew/opt/openblas/lib/ -lopenblas
 
 PROG     := ex1
 
-SRCS     := $(wildcard *.c)
+# SRCS     := $(wildcard *.c)
+SRCS     := ex1.c
 OBJS     := $(SRCS:.c=$(OBJ_EXT))
 TARGET   := $(PROG)$(EXE_EXT)
 
@@ -28,7 +30,7 @@ all: $(TARGET)
 
 $(TARGET): $(OBJS)
 	@echo Linking $@ ...
-	$(CC) $(CFLAGS) -o $@ $^
+	$(CC) $(CFLAGS) -o $@ $^ $(LDFLAG)
 
 %$(OBJ_EXT): %.c
 	@echo Compiling $< ...

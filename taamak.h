@@ -27,43 +27,39 @@ typedef struct {double x, y, z;} tmk_vec3;
 typedef struct {tmk_vec3 center; double half_width; double intensity;} tmk_load;
 typedef struct {double youngs_modulus, poissons_ratio;} tmk_hs;
 
-struct tmk_model_s;
 /**
- * taamak.h API revolves around an "object" of type `tmk_model` (an opaque 
- * pointer type). Via this object, all of the parameters of the model are 
+ * TODO: description
+ * taamak.h API revolves around an objec of type `tmk_model` (a customised 
+ * struct type). Via this object, all of the parameters of the model are 
  * specified (number of layers, layer compositions, load, material properties, 
  * slope angle, etcetera), and then one finally passes this object to `tmk_solve` 
  * in order to solve the model and evaluate stress/strain at given points.
  */
-typedef struct tmk_model_s *tmk_model;
+typedef struct tmk_model_s tmk_model;
 
 /**
  * Returns a newly allocated `tmk_model` object (or NULL if there was an error, 
  * e.g. out of memory), given the numbers of layers of the pavement system.
  */
-TMKDEF tmk_model tmk_create(const int n_layers);
-TMKDEF void tmk_set_load(tmk_model mdl, 
+TMKDEF void tmk_init(tmk_model *mdl, const int n_layers);
+TMKDEF void tmk_set_load(tmk_model *mdl, 
                          const tmk_vec3 center,
                          const double half_width, 
                          const double intensity);
-TMKDEF void tmk_set_composition(tmk_model mdl, 
+TMKDEF void tmk_set_composition(tmk_model *mdl, 
                                 const double *top_depths);
-TMKDEF void tmk_set_material_properties(tmk_model mdl,
+TMKDEF void tmk_set_material_properties(tmk_model *mdl,
                                         const tmk_hs *hs);
-TMKDEF void tmk_set_evaluation_points(tmk_model mdl, 
+TMKDEF void tmk_set_evaluation_points(tmk_model *mdl, 
                                       const int npts, 
                                       const tmk_vec3 *pts);
-TMKDEF void tmk_set_slope_angle(tmk_model mdl, const double degree);
-TMKDEF void tmk_set_measurement_edge(tmk_model mdl, 
-                                     const int npts, 
-                                     tmk_vec3 *pts, 
-                                     double *vals);
-TMKDEF void tmk_set_measurement_center(tmk_model mdl, 
-                                       const int npts, 
-                                       tmk_vec3 *pts, 
-                                       double *vals);
-TMKDEF void tmk_solve(tmk_model mdl);
-TMKDEF void tmk_destroy(tmk_model mdl);
+TMKDEF void tmk_set_slope_angle(tmk_model *mdl, const double degree);
+TMKDEF void tmk_set_measurement(tmk_model *mdl, 
+                                const int npts, 
+                                tmk_vec3 *pts, 
+                                double *vals);
+TMKDEF void tmk_solve(tmk_model *mdl);
+TMKDEF void tmk_reset(tmk_model *mdl);
 
 #endif // INCLUDE_TAAMAK_H
 
@@ -89,15 +85,14 @@ TMKDEF void tmk_destroy(tmk_model mdl);
 
 #define TMK_GEOM_EPSILON 0.001
 
-enum tmk_result_e {
+typedef enum {
         TMK_INITIAL = 0,
         TMK_SUCCESS,
         TMK_ALLOCATION_FAILURE,
         TMK_LAPACK_FAILURE,
         TMK_NO_COMPOSITION,
         TMK_NO_LOAD,
-};
-typedef enum tmk_result_e tmk_result;
+} tmk_result;
 
 struct tmk_model_s {
         int         n_layers;
@@ -123,12 +118,20 @@ struct tmk_model_s {
         double      slope_angle;
         int         info_lapack;
         tmk_result  result;
-        double     *sol;
-        tmk_vec3   *force_boundary;
+        // double     *sol;
+        // tmk_vec3   *force_boundary;
 };
 
-static const int tmk__const_m_side = 50;
-static const int tmk__const_n_side = 40;
+// static const int tmk__const_m_side = 50;
+// static const int tmk__const_n_side = 40;
+
+#ifndef TMK_CONST_M_SIDE
+#define TMK_CONST_M_SIDE 50
+#endif
+
+#ifndef TMK_CONST_N_SIDE
+#define TMK_CONST_N_SIDE 50
+#endif
 
 /**
  * fundamental solutions
@@ -542,7 +545,7 @@ static inline double tmk__coefficients_concentrated_uz_z(double z, double c,
 static void tmk__coefficients_concentrated_stress_x(double *coefficients, 
                                                     tmk_vec3 *evaluation_point, 
                                                     tmk_vec3 *force_point, 
-                                                    tmk_hs *halfspace)
+                                                    const tmk_hs *halfspace)
 {
         double x = evaluation_point->x - force_point->x;
         double y = evaluation_point->y - force_point->y;
@@ -566,7 +569,7 @@ static void tmk__coefficients_concentrated_stress_x(double *coefficients,
 static void tmk__coefficients_concentrated_stress_y(double *coefficients, 
                                                     tmk_vec3 *evaluation_point, 
                                                     tmk_vec3 *force_point, 
-                                                    tmk_hs *halfspace)
+                                                    const tmk_hs *halfspace)
 {
         double x = evaluation_point->x - force_point->x;
         double y = evaluation_point->y - force_point->y;
@@ -590,7 +593,7 @@ static void tmk__coefficients_concentrated_stress_y(double *coefficients,
 static void tmk__coefficients_concentrated_stress_z(double *coefficients, 
                                                     tmk_vec3 *evaluation_point, 
                                                     tmk_vec3 *force_point, 
-                                                    tmk_hs *halfspace)
+                                                    const tmk_hs *halfspace)
 {
         double x = evaluation_point->x - force_point->x;
         double y = evaluation_point->y - force_point->y;
@@ -775,8 +778,8 @@ static inline double tmk__coefficients_distributed_b_z(double x, double y, doubl
 
 static void tmk__coefficients_distributed_stress(double *coefficients, 
                                                  tmk_vec3 *evaluation_point, 
-                                                 tmk_load *load, 
-                                                 tmk_hs *halfspace)
+                                                 const tmk_load *load, 
+                                                 const tmk_hs *halfspace)
 {
         double x = evaluation_point->x - load->center.x;
         double y = evaluation_point->y - load->center.y;
@@ -858,28 +861,28 @@ static void tmk__coefficients_distributed_displacement(double *coefficients,
         );
 }
 
-static double tmk__coefficients_distributed_uz(tmk_vec3 *evaluation_point, 
-                                               tmk_load *load, 
-                                               tmk_hs *halfspace)
-{
-        double x = evaluation_point->x - load->center.x;
-        double y = evaluation_point->y - load->center.y;
-        double z = evaluation_point->z - load->center.z;
+// static double tmk__coefficients_distributed_uz(tmk_vec3 *evaluation_point, 
+//                                                tmk_load *load, 
+//                                                tmk_hs *halfspace)
+// {
+//         double x = evaluation_point->x - load->center.x;
+//         double y = evaluation_point->y - load->center.y;
+//         double z = evaluation_point->z - load->center.z;
 
-        double b = load->half_width;
+//         double b = load->half_width;
 
-        double youngs_modulus = halfspace->youngs_modulus;
-        double poissons_ratio = halfspace->poissons_ratio;
+//         double youngs_modulus = halfspace->youngs_modulus;
+//         double poissons_ratio = halfspace->poissons_ratio;
 
-        double uz = (1.0 + poissons_ratio) / 2.0 / M_PI / youngs_modulus * (
-                tmk__coefficients_distributed_b_z(x + b, y + b, z, poissons_ratio) 
-                + tmk__coefficients_distributed_b_z(x - b, y - b, z, poissons_ratio) 
-                - tmk__coefficients_distributed_b_z(x - b, y + b, z, poissons_ratio) 
-                - tmk__coefficients_distributed_b_z(x + b, y - b, z, poissons_ratio)
-        );
+//         double uz = (1.0 + poissons_ratio) / 2.0 / M_PI / youngs_modulus * (
+//                 tmk__coefficients_distributed_b_z(x + b, y + b, z, poissons_ratio) 
+//                 + tmk__coefficients_distributed_b_z(x - b, y - b, z, poissons_ratio) 
+//                 - tmk__coefficients_distributed_b_z(x - b, y + b, z, poissons_ratio) 
+//                 - tmk__coefficients_distributed_b_z(x + b, y - b, z, poissons_ratio)
+//         );
 
-        return uz;
-}
+//         return uz;
+// }
 
 /**
  * Tensor transformations
@@ -903,58 +906,253 @@ static double tmk__coefficients_distributed_uz(tmk_vec3 *evaluation_point,
         tensor[4] = xz * cos(2.0 * radian) + (xx - zz) * cos(radian) * sin(radian);
 }
 
-static void tmk__coefficients_tensor_transformation_y_full(double *tensor, double degree)
+// static void tmk__coefficients_tensor_transformation_y_full(double *tensor, double degree)
+// {
+//         double radian = degree * M_PI / 180.0;
+
+//         double xx = tensor[0];
+//         double zz = tensor[2];
+//         double yz = tensor[3];
+//         double xz = tensor[4];
+//         double xy = tensor[5];
+
+//         tensor[0] = xx * cos(radian) * cos(radian) 
+//                     - 2.0 * xz * cos(radian) * sin(radian) 
+//                     + zz * sin(radian) * sin(radian);
+//         tensor[2] = zz * cos(radian) * cos(radian) 
+//                     + xx * sin(radian) * sin(radian) 
+//                     + xz * sin(2.0 * radian);
+//         tensor[3] = yz * cos(radian) + xy * sin(radian);
+//         tensor[4] = xz * cos(2.0 * radian) + (xx - zz) * cos(radian) * sin(radian);
+//         tensor[5] = xy * cos(radian) - yz * sin(radian);
+// }
+
+// static void tmk__coefficients_tensor_transformation_z_full(double *tensor, double degree)
+// {
+//         double radian = degree * M_PI / 180.0;
+
+//         double xx = tensor[0];
+//         double yy = tensor[1];
+//         double yz = tensor[3];
+//         double xz = tensor[4];
+//         double xy = tensor[5];
+
+//         tensor[0] = xx * cos(radian) * cos(radian) 
+//                     + yy * sin(radian) * sin(radian) 
+//                     + xy * sin(2.0 * radian);
+//         tensor[1] = yy * cos(radian) * cos(radian) 
+//                     - 2.0 * xy * cos(radian) * sin(radian) 
+//                     + xx * sin(radian) * sin(radian);
+//         tensor[3] = yz * cos(radian) - xz * sin(radian);
+//         tensor[4] = xz * cos(radian) + yz * sin(radian);
+//         tensor[5] = xy * cos(2.0 * radian) + (yy - xx) * cos(radian) * sin(radian);
+// }
+
+TMKDEF void tmk_init(tmk_model *mdl, const int n_layers)
 {
-        double radian = degree * M_PI / 180.0;
+        mdl->n_layers = n_layers;
 
-        double xx = tensor[0];
-        double zz = tensor[2];
-        double yz = tensor[3];
-        double xz = tensor[4];
-        double xy = tensor[5];
-
-        tensor[0] = xx * cos(radian) * cos(radian) 
-                    - 2.0 * xz * cos(radian) * sin(radian) 
-                    + zz * sin(radian) * sin(radian);
-        tensor[2] = zz * cos(radian) * cos(radian) 
-                    + xx * sin(radian) * sin(radian) 
-                    + xz * sin(2.0 * radian);
-        tensor[3] = yz * cos(radian) + xy * sin(radian);
-        tensor[4] = xz * cos(2.0 * radian) + (xx - zz) * cos(radian) * sin(radian);
-        tensor[5] = xy * cos(radian) - yz * sin(radian);
+        mdl->info_depths = false;
+        mdl->info_load = false;
+        mdl->info_mat = false;
+        mdl->info_eval_pts = false;
+        mdl->info_measure_edge = false;
+        mdl->info_measure_center = false;
+        mdl->info_angle = false;
+        mdl->info_lapack = -999;        // random large negative number to initialise lapack info status
+        mdl->result = TMK_INITIAL;        
 }
 
-static void tmk__coefficients_tensor_transformation_z_full(double *tensor, double degree)
+TMKDEF void tmk_set_load(tmk_model *mdl, const tmk_vec3 center,
+                         const double half_width, const double intensity)
 {
-        double radian = degree * M_PI / 180.0;
-
-        double xx = tensor[0];
-        double yy = tensor[1];
-        double yz = tensor[3];
-        double xz = tensor[4];
-        double xy = tensor[5];
-
-        tensor[0] = xx * cos(radian) * cos(radian) 
-                    + yy * sin(radian) * sin(radian) 
-                    + xy * sin(2.0 * radian);
-        tensor[1] = yy * cos(radian) * cos(radian) 
-                    - 2.0 * xy * cos(radian) * sin(radian) 
-                    + xx * sin(radian) * sin(radian);
-        tensor[3] = yz * cos(radian) - xz * sin(radian);
-        tensor[4] = xz * cos(radian) + yz * sin(radian);
-        tensor[5] = xy * cos(2.0 * radian) + (yy - xx) * cos(radian) * sin(radian);
+        mdl->load = (tmk_load){
+                .center = center,
+                .half_width = half_width,
+                .intensity = intensity,
+        };
+        mdl->info_load = true;
 }
 
-static bool tmk__util_assert_eq(double a, double b)
+TMKDEF void tmk_set_composition(tmk_model *mdl, 
+                                const double *top_depths)
 {
-        double diff = fabs(a - b);
-        double rel_eps = DBL_EPSILON;
-        double abs_eps = DBL_MIN * 2.0;
+        int len = sizeof(*top_depths) / sizeof(top_depths);
+        if (len != mdl->n_layers) 
+                mdl->info_depths = false;
+        else {
+                mdl->top_depths = (double *)top_depths;
+                mdl->info_depths = true;
+        }
+}
 
-        if (diff <= abs_eps) return true;
+TMKDEF void tmk_set_material_properties(tmk_model *mdl,
+                                        const tmk_hs *hs)
+{
+        mdl->halfspace = (tmk_hs *)hs;
+        mdl->info_mat = true;
+}
 
-        double norm = fmin(fabs(a) + fabs(b), DBL_MAX);
-        return (diff <= norm * rel_eps);
+TMKDEF void tmk_set_evaluation_points(tmk_model *mdl, const int npts, 
+                                      const tmk_vec3 *pts)
+{
+        mdl->npts_eval = npts;
+        mdl->pts_eval = (tmk_vec3 *)pts;
+        mdl->info_eval_pts = true;
+}
+
+TMKDEF void tmk_set_slope_angle(tmk_model *mdl, const double degree)
+{
+        mdl->slope_angle = degree;
+        mdl->info_angle = true;
+}
+
+// TMKDEF void tmk_set_measurement(tmk_model *mdl, 
+//                                 const int npts, 
+//                                 tmk_vec3 *pts, 
+//                                 double *vals)
+// {
+//         // TODO: implementation
+// }
+
+/**
+ * Function to solve a single layer half-space system.
+ * 
+ * Input:
+ *   pre-allocated array for solutions, `double *sol`,
+ *   pre-allocated array for points on force boundary, `tmk_vec3 force_boundary`,
+ *   pointer to half-space parameters, `tmk_hs *halfspace`, 
+ *     (note that half-space parameters are stored in an array in the model type
+ *      `tmk_model` due to the compatibility concern for multi-layer systems, thus 
+ *      in the single layer case, developers should pass the first element of 
+ *      such array into this function.)
+ *   pointer to load parameters, `tmk_load *load`,
+ *   slope angle in [deg], `double alpha`,
+ *   number of points on each side of the simulated boundary grid, `const int mside`,
+ *   number of points on each side of the force boundary grid, `const int nside`,
+ *   pointer to general result info parameter, `tmk_result *result`,
+ *   pointer to lapack result info parameter, `int *info_lapack`
+ * 
+ * Output:
+ *   the function modify `*sol` and `*force_boundary` in place, to store solutions
+ *   and force boundary geometry for further use.
+ */
+static void tmk__solve_single(double *sol, tmk_vec3 *force_boundary, 
+                              const tmk_hs *halfspace, const tmk_load *load, 
+                              const double alpha, const int mside, const int nside,
+                              tmk_result *result, int *info_lapack);
+
+/**
+ * Function to evaluate stresses and displacements at given list of points in a 
+ * single layer pavement system. 
+ * 
+ * Inputs:
+ *   list of points, `tmk_vec3 *pts`
+ *   number of evaluation points, `const int npts`
+ *   pointer to load config, `tmk_load *load`
+ *   pointer to halfspace config, `tmk_hs *halfspace`
+ *   list of solutions from solver, `double *sol`
+ *   list of force boundary points initiated in solver, `tmk_vec3 *force_boundary`
+ *   number of points on force boundary, `const int n_force`
+ * 
+ * Output:
+ *   print evaluation results in stdout
+ */
+static void tmk__evaluate_single(tmk_vec3 *pts, const int npts, 
+                                 tmk_load *load, tmk_hs *halfspace,
+                                 double *sol, tmk_vec3 *force_boundary, const int n_forces);
+
+TMKDEF void tmk_solve(tmk_model *mdl)
+{
+        // TODO: implementation
+        if (mdl->info_load == false) {
+                mdl->result = TMK_NO_LOAD;
+                return;
+        }
+        const int n = TMK_CONST_N_SIDE * TMK_CONST_N_SIDE;
+        double *sol = calloc(3 * n, sizeof(*sol));
+        tmk_vec3 *force_boundary = calloc(n, sizeof(*force_boundary));
+        tmk__solve_single(sol, force_boundary, 
+                          &mdl->halfspace[0], &mdl->load, 
+                          mdl->slope_angle, TMK_CONST_M_SIDE, TMK_CONST_N_SIDE,
+                          &mdl->result, &mdl->info_lapack);
+        if (mdl->info_eval_pts == true) 
+                tmk__evaluate_single(mdl->pts_eval, mdl->npts_eval, 
+                                     &mdl->load, &mdl->halfspace[0], 
+                                     sol, force_boundary, n);
+        free(sol);
+        free(force_boundary);
+        // printf("Call `tmk_log` to check results.\n");
+}
+
+static void tmk__log_evaluation_single(tmk_model *mdl)
+{
+        int npts = mdl->npts_eval;
+        for (int i = 0; i < npts; ++i) {
+                for (int j = 0; j < 9; ++j) {
+                        int idx = i * 9 + j;
+                        printf("%g\t", mdl->vals_eval[idx]);
+                }
+                printf("\n");
+        }
+}
+
+TMKDEF void tmk_log(tmk_model *mdl)
+{
+        if (mdl == NULL) {
+                perror("Fail to initialise model...");
+                return;
+        }
+
+        if (mdl->result == TMK_SUCCESS) tmk__log_evaluation_single(mdl);
+        else perror("Solver error...");
+
+        // TODO: implementation
+        /**
+         * ---
+         * LOG
+         * ---
+         * Initial Model: 
+         * 
+         *                      |---- LOAD ----|
+         *     ----------------------------------------------- z = 0.0[mm]
+         *     alpha:   /    E  = 500.0[MPa] / E = unknown
+         *   75.0[deg] /     nu = 0.30[-] / nu = unknown
+         *            / 
+         * 
+         * Load:
+         *      center   : (x, y, z)
+         *      width    : 2b[mm]
+         *      intensity: q[MPa]
+         * 
+         * Calculations: 
+         *      Evaluation of stresses and displacements at given points
+         * 
+         * Results:
+         * 
+         *      
+         */
+}
+
+TMKDEF void tmk_reset(tmk_model *mdl)
+{
+        if (mdl == NULL) return;
+        // free(mdl);
+}
+
+/**
+ * Function to add epsilon to points close to the corner of the loading patch, 
+ * due to the singularities. The function takes pointer of a single point, 
+ * `tmk_vec3 *point`, and the pointer of load parameters `tmk_load *load`, then 
+ * modify the given point in place.
+ */
+static void tmk__util_correct_singularity(tmk_vec3 *point, const tmk_load *load)
+{
+        if (fabs(fabs(point->x - load->center.x) - load->half_width) < 1.0e-9)
+                point->x += TMK_GEOM_EPSILON;
+        
+        if (fabs(fabs(point->y - load->center.y) - load->half_width) < 1.0e-9)
+                point->y += TMK_GEOM_EPSILON;
 }
 
 static void tmk__util_fill_lhs(double *lhs, const int m, const int n, 
@@ -982,35 +1180,27 @@ static void tmk__util_fill_lhs(double *lhs, const int m, const int n,
 }
 
 static void tmk__geometry_grid_uniform(tmk_vec3 *grid, 
-                                       const int n_side,
+                                       const int npts_side,
                                        const double h, 
                                        const double degree,
                                        const tmk_load *load)
 {
         double radian = degree * M_PI / 180.0;
-        double s = tmk__util_assert_eq(radian, 0.0) ? sin(radian + DBL_EPSILON)
-                                                    : sin(radian);
+        double s = sin(radian);
         double hx = h / s;
 
-        for (int i = 0; i < n_side; ++i) {
-                double x = hx * (double)(i + 1 - n_side);
+        for (int i = 0; i < npts_side; ++i) {
+                double x = hx * (double)(i + 1 - npts_side);
 
-                for (int j = 0; j < n_side; ++j) {
-                        double y = h * (double)(2 * j + 1 - n_side) / 2.0;
+                for (int j = 0; j < npts_side; ++j) {
+                        double y = h * (double)(2 * j + 1 - npts_side) / 2.0;
 
-                        int idx = i * n_side + j;
+                        int idx = i * npts_side + j;
 
                         grid[idx].x = x * cos(-1.0 * radian);
-                        if (tmk__util_assert_eq(grid[idx].x - load->center.x, 
-                                                load->half_width))
-                                grid[idx].x += TMK_GEOM_EPSILON;
-
                         grid[idx].y = y;
-                        if (tmk__util_assert_eq(grid[idx].y - load->center.y, 
-                                                load->half_width))
-                                grid[idx].y += TMK_GEOM_EPSILON;
-
                         grid[idx].z = x * sin (-1.0 * radian);
+                        tmk__util_correct_singularity(&grid[idx], load);
                 }
         }
 }
@@ -1027,72 +1217,98 @@ static void tmk__geometry_grid_offset(tmk_vec3 *grid,
         }
 }
 
-static void tmk__solve_single(tmk_model mdl)
+/**
+ * Function to set configure geometrical properties of simulated boundary and
+ * force boundary. The formulae to derive these parameters are given in Levenberg's
+ * work and Fang's MSc thesis (see reference).
+ * 
+ * Input: 
+ *   load center in x-direction, `const double x0`,
+ *   pointer to pre-defined step size of simulated boundary grid, `double *hm`,
+ *   pointer to pre-defined step size of force boundary grid, `double *hn`,
+ *   pointer to pre-defined offset coefficient for force boundary, `double *hm`
+ * 
+ * Output:
+ *   the function modify `hm`, `hn` and `beta` in place.
+ */
+static void tmk__geometry_grid_properties(const double x0, 
+                                          double *hm, double *hn, double *beta);
+
+static void tmk__solve_single(double *sol, tmk_vec3 *force_boundary, 
+                              const tmk_hs *halfspace, const tmk_load *load, 
+                              const double alpha, const int mside, const int nside,
+                              tmk_result *result, int *info_lapack)
 {
         printf("Initialising model...\n");
 
-        double x0 = mdl->load.center.x;
-        double q = mdl->load.intensity;
-        double alpha = mdl->slope_angle;
-
-        double hm = 2.0 * 0.08 * x0;
-        double hn = 2.0 * 0.1 * x0;
-        double beta = 1.25 * hn / x0;
+        double x0 = load->center.x;
+        double q = load->intensity;
         
-        const int m = tmk__const_m_side * tmk__const_m_side;
-        const int n = tmk__const_n_side * tmk__const_n_side;
+        double hm, hn, beta;
+        tmk__geometry_grid_properties(x0, &hm, &hn, &beta);
         
-        tmk_vec3 simulated_boundary[m];
-        tmk_vec3 force_boundary[n];
-        double s33_q[m], s23_q[m], s13_q[m];
+        const int m = mside * mside;
+        const int n = nside * nside;
+        
+        tmk_vec3 *simulated_boundary = calloc(m, sizeof(*simulated_boundary));
 
+        double *s33_q = calloc(m, sizeof(*s33_q));
+        double *s23_q = calloc(m, sizeof(*s23_q));
+        double *s13_q = calloc(m, sizeof(*s13_q));
+        
         double *s33_px = calloc(m * n, sizeof(double));
         double *s23_px = calloc(m * n, sizeof(double));
         double *s13_px = calloc(m * n, sizeof(double));
-
+        
         double *s33_py = calloc(m * n, sizeof(double));
         double *s23_py = calloc(m * n, sizeof(double));
         double *s13_py = calloc(m * n, sizeof(double));
-
+        
         double *s33_pz = calloc(m * n, sizeof(double));
         double *s23_pz = calloc(m * n, sizeof(double));
         double *s13_pz = calloc(m * n, sizeof(double));
-
+        
         double *lhs = calloc(9 * m * n, sizeof(double));
-        double rhs[3 * m];
-
+        double *rhs = calloc(3 * m, sizeof(*rhs));
+        
+        if (simulated_boundary == NULL) {
+                *result = TMK_ALLOCATION_FAILURE;
+                goto cleanup;
+        }
+        if (s33_q == NULL || s23_q == NULL || s13_q == NULL) {
+                *result = TMK_ALLOCATION_FAILURE;
+                goto cleanup;
+        }
         if (s33_px == NULL || s23_px == NULL || s13_px == NULL) {
-                mdl->result = TMK_ALLOCATION_FAILURE;
+                *result = TMK_ALLOCATION_FAILURE;
                 goto cleanup;
         }
         if (s33_py == NULL || s23_py == NULL || s13_py == NULL) {
-                mdl->result = TMK_ALLOCATION_FAILURE;
+                *result = TMK_ALLOCATION_FAILURE;
                 goto cleanup;
         }
         if (s33_pz == NULL || s23_pz == NULL || s13_pz == NULL) {
-                mdl->result = TMK_ALLOCATION_FAILURE;
+                *result = TMK_ALLOCATION_FAILURE;
                 goto cleanup;
         }
-        if (lhs == NULL) {
-                mdl->result = TMK_ALLOCATION_FAILURE;
+        if (lhs == NULL || rhs == NULL) {
+                *result = TMK_ALLOCATION_FAILURE;
                 goto cleanup;
         }
 
-        tmk__geometry_grid_uniform(simulated_boundary, tmk__const_m_side, 
-                                   hm, alpha, &mdl->load);
-        tmk__geometry_grid_uniform(force_boundary, tmk__const_n_side, 
-                                   hn, alpha, &mdl->load);
+        tmk__geometry_grid_uniform(simulated_boundary, mside, hm, alpha, load);
+        tmk__geometry_grid_uniform(force_boundary, nside, hn, alpha, load);
         tmk__geometry_grid_offset(force_boundary, n, beta, x0);
 
         for (int j = 0; j < n; ++j) {
                 for (int i = 0; i < m; ++i) {
                         int idx = j * m + i;
-                        double coeffs[6];
+                        double coeffs[6] = {0};
 
                         tmk__coefficients_concentrated_stress_x(coeffs, 
                                                                 &simulated_boundary[i], 
                                                                 &force_boundary[j], 
-                                                                &mdl->halfspace[0]);
+                                                                halfspace);
                         tmk__coefficients_tensor_transformation_y(coeffs, alpha);
 
                         s33_px[idx] = coeffs[2];
@@ -1102,7 +1318,7 @@ static void tmk__solve_single(tmk_model mdl)
                         tmk__coefficients_concentrated_stress_y(coeffs, 
                                                                 &simulated_boundary[i], 
                                                                 &force_boundary[j], 
-                                                                &mdl->halfspace[0]);
+                                                                halfspace);
                         tmk__coefficients_tensor_transformation_y(coeffs, alpha);
 
                         s33_py[idx] = coeffs[2];
@@ -1112,7 +1328,7 @@ static void tmk__solve_single(tmk_model mdl)
                         tmk__coefficients_concentrated_stress_z(coeffs, 
                                                                 &simulated_boundary[i], 
                                                                 &force_boundary[j], 
-                                                                &mdl->halfspace[0]);
+                                                                halfspace);
                         tmk__coefficients_tensor_transformation_y(coeffs, alpha);
 
                         s33_pz[idx] = coeffs[2];
@@ -1126,10 +1342,10 @@ static void tmk__solve_single(tmk_model mdl)
                            s23_px, s23_py, s23_pz, 
                            s13_px, s13_py, s13_pz);
 
-        for (size_t i = 0; i < m; ++i) {
-                double coeffs[6];
+        for (int i = 0; i < m; ++i) {
+                double coeffs[6] = {0};
 
-                tmk__coefficients_distributed_stress(coeffs, &simulated_boundary[i], &mdl->load, &mdl->halfspace[0]);
+                tmk__coefficients_distributed_stress(coeffs, &simulated_boundary[i], load, halfspace);
                 tmk__coefficients_tensor_transformation_y(coeffs, alpha);
                 s33_q[i] = coeffs[2];
                 s23_q[i] = coeffs[3];
@@ -1143,27 +1359,28 @@ static void tmk__solve_single(tmk_model mdl)
         cblas_dscal(3 * m, -1.0 * q, rhs, 1);
 
         printf("Solving...\n");
-        mdl->info_lapack = LAPACKE_dgels(LAPACK_COL_MAJOR, 'N', 
-                                         3 * m, 3 * n, 1, 
-                                         lhs, 3 * m, rhs, 3 * m);
+        *info_lapack = LAPACKE_dgels(LAPACK_COL_MAJOR, 'N', 
+                                     3 * m, 3 * n, 1, 
+                                     lhs, 3 * m, rhs, 3 * m);
 
-        if (mdl->info_lapack == 0) {
-                double sol[3 * n];
-                mdl->result = TMK_SUCCESS;
-
+        if (*info_lapack == 0) {
+                *result = TMK_SUCCESS;
                 for (int i = 0; i < 3 * n; ++i) {
                         sol[i] = rhs[i];
                 }
-
-                mdl->sol = (double *)sol;
-                mdl->force_boundary = (tmk_vec3 *) force_boundary;
                 goto cleanup;
         } else {
-                mdl->result = TMK_LAPACK_FAILURE;
+                *result = TMK_LAPACK_FAILURE;
                 goto cleanup;
         }
 
+        printf("Solved.\n");
+
 cleanup: 
+        free(simulated_boundary);
+        free(s33_q);
+        free(s23_q);
+        free(s13_q);
         free(s33_px);
         free(s23_px);
         free(s13_px);
@@ -1174,213 +1391,138 @@ cleanup:
         free(s23_pz);
         free(s13_pz);
         free(lhs);
-
-        printf("Solved.\n");
+        free(rhs);
 }
 
-static void tmk__evaluate_single(tmk_model mdl)
+static void tmk__geometry_grid_properties(const double x0, 
+                                          double *hm, double *hn, double *beta)
+{
+    *hm = 2.0 * 0.08 * x0;
+    *hn = 2.0 * 0.1 * x0;
+    *beta = 1.25 * *hn / x0;
+}
+
+static void tmk__evaluate_single(tmk_vec3 *pts, const int npts, 
+                                 tmk_load *load, tmk_hs *halfspace,
+                                 double *sol, tmk_vec3 *force_boundary, const int n_forces)
 {
         printf("Evaluating at given points...\n");
-        double val[mdl->npts_eval * 9];
 
-        for (int p = 0; p < mdl->npts_eval; ++p) {
+        for (int p = 0; p < npts; ++p) {
+                tmk__util_correct_singularity(&pts[p], load);
+                
                 double sxx = 0, syy = 0, szz = 0, syz = 0, sxz = 0, sxy = 0;
                 double ux = 0, uy = 0, uz = 0;
                 double cs[6] = {0};
                 double cu[3] = {0};
 
                 // by load
-                tmk__coefficients_distributed_stress(cs, &mdl->pts_eval[p], &mdl->load, &mdl->halfspace[0]);
-                sxx += cs[0] * mdl->load.intensity;
-                syy += cs[1] * mdl->load.intensity;
-                szz += cs[2] * mdl->load.intensity;
-                syz += cs[3] * mdl->load.intensity;
-                sxz += cs[4] * mdl->load.intensity;
-                sxy += cs[5] * mdl->load.intensity;
+                tmk__coefficients_distributed_stress(cs, 
+                                                     &pts[p], 
+                                                     load, 
+                                                     halfspace);
+                sxx += cs[0] * load->intensity;
+                syy += cs[1] * load->intensity;
+                szz += cs[2] * load->intensity;
+                syz += cs[3] * load->intensity;
+                sxz += cs[4] * load->intensity;
+                sxy += cs[5] * load->intensity;
 
-                tmk__coefficients_distributed_displacement(cu, &mdl->pts_eval[p], &mdl->load, &mdl->halfspace[0]);
-                ux += cu[0] * mdl->load.intensity;
-                uy += cu[1] * mdl->load.intensity;
-                uz += cu[2] * mdl->load.intensity;
+                tmk__coefficients_distributed_displacement(cu, 
+                                                           &pts[p], 
+                                                           load, 
+                                                           halfspace);
+                ux += cu[0] * load->intensity;
+                uy += cu[1] * load->intensity;
+                uz += cu[2] * load->intensity;
 
                 // by force boundary
-                int n_forces = tmk__const_n_side * tmk__const_n_side;
                 for (int j = 0; j < n_forces; ++j) {
                         // px
-                        tmk__coefficients_concentrated_stress_x(cs, &mdl->pts_eval[p], &mdl->force_boundary[j], &mdl->halfspace[0]);
-                        sxx += cs[0] * mdl->sol[0 * n_forces + j];
-                        syy += cs[1] * mdl->sol[0 * n_forces + j];
-                        szz += cs[2] * mdl->sol[0 * n_forces + j];
-                        syz += cs[3] * mdl->sol[0 * n_forces + j];
-                        sxz += cs[4] * mdl->sol[0 * n_forces + j];
-                        sxy += cs[5] * mdl->sol[0 * n_forces + j];
-                        tmk__coefficients_concentrated_displacement_x(cu, &mdl->pts_eval[p], &mdl->force_boundary[j], &mdl->halfspace[0]);
-                        ux += cu[0] * mdl->sol[0 * n_forces + j];
-                        uy += cu[1] * mdl->sol[0 * n_forces + j];
-                        uz += cu[2] * mdl->sol[0 * n_forces + j];
+                        tmk__coefficients_concentrated_stress_x(cs, 
+                                                                &pts[p], 
+                                                                &force_boundary[j], 
+                                                                halfspace);
+                        sxx += cs[0] * sol[0 * n_forces + j];
+                        syy += cs[1] * sol[0 * n_forces + j];
+                        szz += cs[2] * sol[0 * n_forces + j];
+                        syz += cs[3] * sol[0 * n_forces + j];
+                        sxz += cs[4] * sol[0 * n_forces + j];
+                        sxy += cs[5] * sol[0 * n_forces + j];
+                        tmk__coefficients_concentrated_displacement_x(cu, 
+                                                                      &pts[p], 
+                                                                      &force_boundary[j], 
+                                                                      halfspace);
+                        ux += cu[0] * sol[0 * n_forces + j];
+                        uy += cu[1] * sol[0 * n_forces + j];
+                        uz += cu[2] * sol[0 * n_forces + j];
 
                         // py
-                        tmk__coefficients_concentrated_stress_y(cs, &mdl->pts_eval[p], &mdl->force_boundary[j], &mdl->halfspace[0]);
-                        sxx += cs[0] * mdl->sol[1 * n_forces + j];
-                        syy += cs[1] * mdl->sol[1 * n_forces + j];
-                        szz += cs[2] * mdl->sol[1 * n_forces + j];
-                        syz += cs[3] * mdl->sol[1 * n_forces + j];
-                        sxz += cs[4] * mdl->sol[1 * n_forces + j];
-                        sxy += cs[5] * mdl->sol[1 * n_forces + j];
-                        tmk__coefficients_concentrated_displacement_y(cu, &mdl->pts_eval[p], &mdl->force_boundary[j], &mdl->halfspace[0]);
-                        ux += cu[0] * mdl->sol[1 * n_forces + j];
-                        uy += cu[1] * mdl->sol[1 * n_forces + j];
-                        uz += cu[2] * mdl->sol[1 * n_forces + j];
+                        tmk__coefficients_concentrated_stress_y(cs, 
+                                                                &pts[p], 
+                                                                &force_boundary[j], 
+                                                                halfspace);
+                        sxx += cs[0] * sol[1 * n_forces + j];
+                        syy += cs[1] * sol[1 * n_forces + j];
+                        szz += cs[2] * sol[1 * n_forces + j];
+                        syz += cs[3] * sol[1 * n_forces + j];
+                        sxz += cs[4] * sol[1 * n_forces + j];
+                        sxy += cs[5] * sol[1 * n_forces + j];
+                        tmk__coefficients_concentrated_displacement_y(cu, 
+                                                                      &pts[p], 
+                                                                      &force_boundary[j], 
+                                                                      halfspace);
+                        ux += cu[0] * sol[1 * n_forces + j];
+                        uy += cu[1] * sol[1 * n_forces + j];
+                        uz += cu[2] * sol[1 * n_forces + j];
 
                         // pz
-                        tmk__coefficients_concentrated_stress_z(cs, &mdl->pts_eval[p], &mdl->force_boundary[j], &mdl->halfspace[0]);
-                        sxx += cs[0] * mdl->sol[2 * n_forces + j];
-                        syy += cs[1] * mdl->sol[2 * n_forces + j];
-                        szz += cs[2] * mdl->sol[2 * n_forces + j];
-                        syz += cs[3] * mdl->sol[2 * n_forces + j];
-                        sxz += cs[4] * mdl->sol[2 * n_forces + j];
-                        sxy += cs[5] * mdl->sol[2 * n_forces + j];
+                        tmk__coefficients_concentrated_stress_z(cs, 
+                                                                &pts[p], 
+                                                                &force_boundary[j], 
+                                                                halfspace);
+                        sxx += cs[0] * sol[2 * n_forces + j];
+                        syy += cs[1] * sol[2 * n_forces + j];
+                        szz += cs[2] * sol[2 * n_forces + j];
+                        syz += cs[3] * sol[2 * n_forces + j];
+                        sxz += cs[4] * sol[2 * n_forces + j];
+                        sxy += cs[5] * sol[2 * n_forces + j];
 
-                        tmk__coefficients_concentrated_displacement_z(cu, &mdl->pts_eval[p], &mdl->force_boundary[j], &mdl->halfspace[0]);
-                        ux += cu[0] * mdl->sol[2 * n_forces + j];
-                        uy += cu[1] * mdl->sol[2 * n_forces + j];
-                        uz += cu[2] * mdl->sol[2 * n_forces + j];
+                        tmk__coefficients_concentrated_displacement_z(cu, 
+                                                                      &pts[p], 
+                                                                      &force_boundary[j], 
+                                                                      halfspace);
+                        ux += cu[0] * sol[2 * n_forces + j];
+                        uy += cu[1] * sol[2 * n_forces + j];
+                        uz += cu[2] * sol[2 * n_forces + j];
                 }
 
-                val[0 * p] = sxx;
-                val[1 * p] = syy;
-                val[2 * p] = szz;
-                val[3 * p] = syz;
-                val[4 * p] = sxz;
-                val[5 * p] = sxy;
-                val[6 * p] = ux;
-                val[7 * p] = uy;
-                val[8 * p] = uz;
+                printf("Point %d: (%.0lf, %.0lf, %.0lf)\n", p + 1, pts[p].x, pts[p].y, pts[p].z);
+                printf("Stresses:\n");
+                printf("  xx = %.3e [MPa]\n", sxx);
+                printf("  yy = %.3e [MPa]\n", syy);
+                printf("  zz = %.3e [MPa]\n", szz);
+                printf("  yz = %.3e [MPa]\n", syz);
+                printf("  xz = %.3e [MPa]\n", sxz);
+                printf("  xy = %.3e [MPa]\n\n", sxy);
+                printf("Displacement:\n");
+                printf("  x = %.3e [mm]\n", ux);
+                printf("  y = %.3e [mm]\n", uy);
+                printf("  z = %.3e [mm]\n\n", uz);
+
+                // val[0 + p * 9] = sxx;
+                // val[1 + p * 9] = syy;
+                // val[2 + p * 9] = szz;
+                // val[3 + p * 9] = syz;
+                // val[4 + p * 9] = sxz;
+                // val[5 + p * 9] = sxy;
+                // val[6 + p * 9] = ux;
+                // val[7 + p * 9] = uy;
+                // val[8 + p * 9] = uz;
         }
 
-        mdl->vals_eval = (double *)val;
+        // mdl->vals_eval = (double *)val;
         printf("Evaluated.\n");
-}
-
-TMKDEF tmk_model tmk_create(const int n_layers)
-{
-        tmk_model mdl = malloc(sizeof(struct tmk_model_s));
-        if (mdl == NULL) {
-                perror("Fail to initiate model (memory allocation failure)...");
-                return NULL; 
-        }
-
-        mdl->n_layers = n_layers;
-
-        mdl->info_depths = false;
-        mdl->info_load = false;
-        mdl->info_mat = false;
-        mdl->info_eval_pts = false;
-        mdl->info_measure_edge = false;
-        mdl->info_measure_center = false;
-        mdl->info_angle = false;
-        mdl->info_lapack = -999;        // random large negative number to initialise lapack info status
-        mdl->result = TMK_INITIAL;
-        
-        return mdl;
-}
-
-TMKDEF void tmk_set_load(tmk_model mdl, const tmk_vec3 center,
-                         const double half_width, const double intensity)
-{
-        if (mdl == NULL) return; 
-
-        mdl->load = (tmk_load){
-                .center = center,
-                .half_width = half_width,
-                .intensity = intensity,
-        };
-        mdl->info_load = true;
-}
-
-TMKDEF void tmk_set_composition(tmk_model mdl, 
-                                const double *top_depths)
-{
-        if (mdl == NULL) return; 
-
-        int len = sizeof(*top_depths) / sizeof(top_depths);
-        if (len != mdl->n_layers) 
-                mdl->info_depths = false;
-        else {
-                mdl->top_depths = (double *)top_depths;
-                mdl->info_depths = true;
-        }
-}
-
-TMKDEF void tmk_set_material_properties(tmk_model mdl,
-                                        const tmk_hs *hs)
-{
-        if (mdl == NULL) return; 
-
-        mdl->halfspace = (tmk_hs *)hs;
-        mdl->info_mat = true;
-}
-
-TMKDEF void tmk_set_evaluation_points(tmk_model mdl, const int npts, 
-                                      const tmk_vec3 *pts)
-{
-        if (mdl == NULL) return; 
-
-        mdl->npts_eval = npts;
-        mdl->pts_eval = (tmk_vec3 *)pts;
-        mdl->info_eval_pts = true;
-}
-
-TMKDEF void tmk_set_slope_angle(tmk_model mdl, const double degree)
-{
-        if (mdl == NULL) return; 
-
-        mdl->slope_angle = degree;
-        mdl->info_angle = true;
-}
-
-TMKDEF void tmk_set_measurement_edge(tmk_model mdl, 
-                                     const int npts, 
-                                     tmk_vec3 *pts, 
-                                     double *vals)
-{
-        if (mdl == NULL) return; 
-
-        // TODO: implementation
-}
-
-TMKDEF void tmk_set_measurement_center(tmk_model mdl, 
-                                       const int npts, 
-                                       tmk_vec3 *pts, 
-                                       double *vals)
-{
-        if (mdl == NULL) return; 
-
-        // TODO: implementation
-}
-
-TMKDEF void tmk_solve(tmk_model mdl)
-{
-        // TODO: implementation
-        if (mdl == NULL) 
-                return;
-        else {
-                if (mdl->info_load == false) {
-                        mdl->result = TMK_NO_LOAD;
-                        return;
-                }
-
-                tmk__solve_single(mdl);
-
-                if (mdl->info_eval_pts == true) tmk__evaluate_single(mdl);
-
-                printf("Call `tmk_log` to check results.\n");
-        }
-}
-
-TMKDEF void tmk_destroy(tmk_model mdl)
-{
-        free(mdl);
 }
 
 #endif // TAAMAK_IMPLEMENTATION

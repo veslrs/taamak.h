@@ -3469,7 +3469,7 @@ void boundary_dynamic(double *len_side_final, double *len_btm_final, tmk_load *l
 /*
         Revision History:
 
-        ...
+        1.0.0-rc (2025-09-09) first release candidate
 */
 
 /*

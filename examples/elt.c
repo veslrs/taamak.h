@@ -5,9 +5,6 @@
         material properties. Evaluate surface vertical deflection.
 */
 #define TAAMAK_IMPLEMENTATION
-// #define TMK_GEOM_M 47
-// #define TMK_GEOM_N 33
-// #define TMK_ELT_FACTOR 0.85
 #include "../taamak.h"
 
 int main(void)

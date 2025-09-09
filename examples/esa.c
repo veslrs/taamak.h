@@ -61,42 +61,4 @@ int main(void)
 
         // done!
         tmk_checkout(&mdl);
-
-        // const int n_layers = 2;
-
-        // halfspace_t hs[] = {
-        //     {
-        //         .poissons_ratio = 0.3,
-        //         .youngs_modulus = 500.0,
-        //     },
-        //     {
-        //         .poissons_ratio = 0.4,
-        //         .youngs_modulus = 80.0,
-        //     },
-        // };
-
-        // double top_depths[] = {
-        //         0.0,
-        //         750.0,
-        // };
-
-        // load_t load = {
-        //         .center = {150.0, 0.0, 0.0},
-        //         .half_width = 133.0,
-        //         .intensity = 0.707,
-        // };
-
-        // met_t met = {0};
-        // double angle;
-
-        // int res;
-        // res = met_init(&met, n_layers, hs, top_depths, &load, "./data/esa/test_3.csv");
-        // assert(res == 0);
-
-        // res = met_esa_solve(&met, &angle);
-        // assert(res == 0);
-
-        // printf("Effective slope angle = %.1lf [deg]\n", angle);
-
-        // met_cleanup(&met);
 }

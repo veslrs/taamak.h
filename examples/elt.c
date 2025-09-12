@@ -74,7 +74,7 @@ int main(void)
         tmk_set_evaluation_points(&mdl, 9, pts);
 
         // set slope angle
-        tmk_set_slope_angle(&mdl, 0.0);
+        tmk_set_slope_angle(&mdl, 90.0);
 
         // solve
         tmk_solve(&mdl);

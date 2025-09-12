@@ -1,11 +1,12 @@
 /*
-        taamak.h - v1.0.0 - https://github.com/veslrs/taamak.h
+        taamak.h - v1.0.0-rc - https://github.com/veslrs/taamak.h
 
         This library provides functionalities for modelling linear elastic asphalt
         pavement system with an edge, subject to a distribited load normal to the 
         pavement surface. 
 
         # Quick Example
+        
 
         ```c
         TODO: example
@@ -71,7 +72,7 @@ TMKDEF void tmk_linspace(tmk_vec3 *pts, const tmk_vec3 *a, const tmk_vec3 *b, co
 #include "cblas.h"
 #include "lapacke.h"
 
-#define TMK__VERSION "version 1.0.0"
+#define TMK__VERSION "version 1.0.0-rc"
 
 typedef enum {
         TMK_INITIAL = 0,
@@ -114,128 +115,34 @@ struct tmk_model_s {
         // double     *vals_measure_center;
 };
 
-void boundary_dynamic(double *len_side_final, double *len_btm_final, tmk_load *load, tmk_hs *halfspace, double degree, double threshold, double h_default);
+// Re-definable macros
+#ifndef TMK_GEOM_M
+#define TMK_GEOM_M 50
+#endif
 
-// Evaluation
-void evaluation_evaluate(tmk_vec3 *pts,
-        size_t npts,
-        double *sol,
-        tmk_vec3 *force_boundary,
-        size_t n_forces,
-        tmk_load *load,
-        tmk_hs *halfspace,
-        FILE *export);
-void evaluation_evaluate_extrapolate(tmk_vec3 *pts,
-        size_t npts,
-        double *sol,
-        tmk_vec3 *force_boundary,
-        size_t n_forces,
-        tmk_load *load,
-        tmk_hs *halfspace,
-        double *uz);
-void evaluation_evaluate_hs(tmk_vec3 *pts,
-           size_t npts,
-           tmk_load *load,
-           tmk_hs *halfspace,
-           FILE *export);
-void evaluation_free_surface(tmk_vec3 *free_surface, tmk_vec3 *force_boundary, double width, size_t n_per_side, double degree, tmk_load *load, tmk_hs *halfspace, size_t npts_force, double *sol);
-void evaluation_point(tmk_vec3 *evaluation_point, tmk_vec3 *force_boundary, tmk_load *load, tmk_hs *halfspace, double *sol, size_t npts_force);
-void evaluation_line(tmk_vec3 *evaluation_line, tmk_vec3 *force_boundary, tmk_vec3 *lower, tmk_vec3 *upper, size_t n_eval, tmk_load *load, tmk_hs *halfspace, double *uz, double *sol, size_t npts_force);
-// TODO: evaluation_area()
+#ifndef TMK_GEOM_N
+#define TMK_GEOM_N 40
+#endif
 
-void geometry_uniform_grid(tmk_vec3 *grid, size_t n_per_side, double h, double degree, tmk_load *load);
-void geometry_uniform_test(tmk_vec3 *grid, double width, size_t n_per_side, double degree, tmk_load *load);
-void geometry_uniform_line(tmk_vec3 *array, tmk_vec3 *a, tmk_vec3 *b, size_t npts, tmk_load *load);
+#ifndef TMK_ELT_FACTOR
+#define TMK_ELT_FACTOR 0.9
+#endif
 
-void geometry_utils_offset(tmk_vec3 *grid, size_t npts, double beta, double x0);
-void geometry_utils_to_view(tmk_vec3 *grid, size_t n_per_side, double degree);
+#ifndef TMK_ELT_DEG_LIM
+#define TMK_ELT_DEG_LIM 10.0
+#endif
 
-void utils_memory_fill_lhs(double *lhs, size_t m, size_t n, double *s33_px, double *s33_py, double *s33_pz, double *s23_px, double *s23_py, double *s23_pz, double *s13_px, double *s13_py, double *s13_pz);
-/**
- * [met] Method of Equivalent Thickness
- */
+#ifndef TMK_ESA_TOL
+#define TMK_ESA_TOL 1e-3
+#endif
 
-#define MET_TOL 1e-3
-#define MET_EPSILON 1.0e-9
-#define MET_ITER 20
+#ifndef TMK_ESA_ITER
+#define TMK_ESA_ITER 20
+#endif
 
-typedef struct
-{
-        tmk_load load;
-        size_t npts;
-        tmk_vec3 *pts;
-        double *vals;
-} met_test_t;
-
-typedef struct
-{
-        int n_layers;
-        tmk_hs *hs;
-        double *top_depths;
-        met_test_t test;
-} met_t;
-
-int met_init(met_t *met,
-        int n_layers,
-        tmk_hs *hs,
-        double *top_depths,
-        tmk_load *load,
-        const char *test_results);
-
-int met_read_csv(met_t *met, const char *filepath);
-
-void met_cleanup(met_t *met);
-
-// int met_solver_evaluation(double *uzs,
-//          met_t *met,
-//          double *heqs,
-//          double *sol,
-//          double degree,
-//          size_t mside,
-//          size_t nside,
-//          tmk_vec3 *force_boundary,
-//          double *thicknesses,
-//          double *uzs_0);
-
-double met_dist_signed(double *interest,
-          double *target,
-          size_t n);
-
-void met_uz_increment(double *uz,
-         tmk_vec3 *evaluation_point,
-         tmk_vec3 *force_boundary,
-         tmk_hs *halfspace,
-         double *sol,
-         size_t npts_force);
-
-// int met_esa_solve(met_t *met, double *angle);
-        
-// int met_evaluate_extrapolate(met_t *met,
-//         double angle,
-//         tmk_vec3 *eval_pts,
-//         size_t npts,
-//         size_t nside,
-//         const char *export_path);
-
-double met_backcalc_objective(unsigned n,
-         const double *x,
-         double *grad,
-         void *my_func_data);
-
-double met_backcalc_constraint(unsigned n,
-          const double *x,
-          double *grad,
-          void *data);
-
-void met_backcalc_hs_to_double(double *x,
-          tmk_hs *hs,
-          size_t n_layers);
-
-void met_backcalc_double_to_hs(const double *x,
-          tmk_hs *hs,
-          size_t n_layers);
-          
-int met_backcalc_solve(met_t *met, double tol);
+#ifndef TMK_ESA_DEG_LIM
+#define TMK_ESA_DEG_LIM 10.0
+#endif
 
 static inline double tmk__coefficients_radius(double a, double b, double c)
 {
@@ -1006,7 +913,16 @@ TMKDEF void tmk_set_measurement(tmk_model *mdl, const int npts, tmk_vec3 *pts, d
 static void tmk__evaluate_elt(tmk_model *mdl);
 static void tmk__solve_esa(tmk_model *mdl);
 
+static void tmk__geometry_grid_uniform(tmk_vec3 *grid, size_t n_per_side, double h, double degree, tmk_load *load);
+static void tmk__geometry_grid_offset(tmk_vec3 *grid, size_t npts, double beta, double x0);
+
+static void tmk__memory_lhs_fill(double *lhs, size_t m, size_t n, double *s33_px, double *s33_py, double *s33_pz, double *s23_px, double *s23_py, double *s23_pz, double *s13_px, double *s13_py, double *s13_pz);
+
 #define TMK__FMT_INDENT "       "
+
+static tmk_result tmk__solve_single(double *sol, tmk_hs *halfspace, tmk_load *load, 
+                                    double degree, size_t mside, size_t nside, tmk_vec3 *force_boundary,
+                                    tmk_result *result, int *info_lapack);
 
 TMKDEF void tmk_solve(tmk_model *mdl)
 {
@@ -1026,32 +942,49 @@ TMKDEF void tmk_solve(tmk_model *mdl)
                                TMK__FMT_INDENT "linear elastic pavement system. The pavement structure is subject to\n" \
                                TMK__FMT_INDENT "load normal to the surface, distributed in a square patch. The load is\n" \
                                TMK__FMT_INDENT "considered close to the edge of the pavement.\n", mdl->n_layers);
-                        printf("[INFO] Model Detail:\n" \
-                               TMK__FMT_INDENT "Layer compositions and material properties:\n" \
-                               TMK__FMT_INDENT "    Layer #\tYoung's modulus [MPa]\tPoisson's ratio [-]\tThickness[mm]\n");
+                        // TODO: fancy loggings
+                        // printf("[INFO] Model Detail:\n" \
+                        //        TMK__FMT_INDENT "Layer compositions and material properties:\n" \
+                        //        TMK__FMT_INDENT "    Layer #\tYoung's modulus [MPa]\tPoisson's ratio [-]\tThickness[mm]\n");
                         tmk__evaluate_elt(mdl);
                 } else {
                         printf(TMK__FMT_INDENT "Solve effective slope angle for a %d-layer linear elastic pavement system.\n" \
                                TMK__FMT_INDENT "The pavement structure is subject to load normal to the surface,\n" \
                                TMK__FMT_INDENT "distributed in a square patch. The load is considered close to the edge\n" \
                                TMK__FMT_INDENT "of the pavement.\n", mdl->n_layers);
-                        printf("[INFO] Model Detail:\n" \
-                               TMK__FMT_INDENT "Layer compositions and material properties:\n" \
-                               TMK__FMT_INDENT "    Layer #\tYoung's modulus [MPa]\tPoisson's ratio [-]\tThickness[mm]\n");
+                        // TODO: fancy loggings
+                        // printf("[INFO] Model Detail:\n" \
+                        //        TMK__FMT_INDENT "Layer compositions and material properties:\n" \
+                        //        TMK__FMT_INDENT "    Layer #\tYoung's modulus [MPa]\tPoisson's ratio [-]\tThickness[mm]\n");
                         tmk__solve_esa(mdl);
                 }
+        } else {
+                printf(TMK__FMT_INDENT "Evaluation of vertical deflection on the surface of a homogeneous\n" \
+                       TMK__FMT_INDENT "linear elastic pavement system. The pavement structure is subject to\n" \
+                       TMK__FMT_INDENT "load normal to the surface, distributed in a square patch. The load is\n" \
+                       TMK__FMT_INDENT "considered close to the edge of the pavement.\n");
+                // TODO: fancy loggings
+                // printf("[INFO] Model Detail:\n" \
+                //        TMK__FMT_INDENT "Layer compositions and material properties:\n" \
+                //        TMK__FMT_INDENT "    Layer #\tYoung's modulus [MPa]\tPoisson's ratio [-]\tThickness[mm]\n");
+                size_t n = TMK_GEOM_N * TMK_GEOM_N;
+                double *sol = calloc(3 * n, sizeof(double));
+                tmk_vec3 *force_boundary = calloc(n, sizeof(tmk_vec3));
+
+                if (sol == NULL || force_boundary == NULL) {
+                        mdl->result = TMK_ALLOCATION_FAILURE;
+                        free(sol);
+                        free(force_boundary);
+                }
+
+                tmk__solve_single(sol, &mdl->halfspace[0], &mdl->load, 
+                                  mdl->slope_angle, TMK_GEOM_M, TMK_GEOM_N, 
+                                  force_boundary, &mdl->result, &mdl->info_lapack);
+
+                free(sol);
+                free(force_boundary);
         }
 }
-
-#ifndef TMK_ELT_DEG_LIM
-#define TMK_ELT_DEG_LIM 10.0
-#endif
-#ifndef TMK_GEOM_M
-#define TMK_GEOM_M 50
-#endif
-#ifndef TMK_GEOM_N
-#define TMK_GEOM_N 40
-#endif
 
 static double tmk__elt_equivalent_thickness(double current_thickness, tmk_hs *current, tmk_hs *target);
 static void tmk__elt_reset_z(tmk_vec3 *a, size_t npts);
@@ -1119,8 +1052,9 @@ static void tmk__evaluate_elt(tmk_model *mdl)
                 }
         }
 
+        printf("x[mm]\ty[mm]\tdeflection[micron]\n");
         for (int p = 0; p < mdl->npts_eval; ++p) {
-                printf("%.2f,%.2lf,%.2lf\n", mdl->pts_eval[p].x, mdl->pts_eval[p].y, uzs[p] * 1000);
+                printf("%.1lf\t%.1lf\t%.1lf\n", mdl->pts_eval[p].x, mdl->pts_eval[p].y, uzs[p] * 1000);
         }
 
         // dbg
@@ -1150,6 +1084,8 @@ static tmk_result tmk__esa_intermediate_evaluation(tmk_model *mdl, double degree
                                                    double *heqs, double *thicknesses,
                                                    double *sol, tmk_vec3 *force_boundary,
                                                    size_t mside, size_t nside);
+
+static double tmk__esa_dist_signed(double *interest, double *target, size_t n);
 
 static void tmk__solve_esa(tmk_model *mdl)
 {
@@ -1204,9 +1140,9 @@ static void tmk__solve_esa(tmk_model *mdl)
 
         tmk__elt_reset_z(mdl->pts_measure, npts);
 
-        double diff_0 = met_dist_signed(mdl->vals_measure, uzs_0, npts);
+        double diff_0 = tmk__esa_dist_signed(mdl->vals_measure, uzs_0, npts);
         printf("[INFO]   Signed difference with 0.0 [deg]: %.6lf\n", diff_0);
-        if (fabs(diff_0) < (double)MET_TOL) {
+        if (fabs(diff_0) < (double)TMK_ESA_TOL) {
                 printf("[INFO] Half-space solution accepted. Effective slope angle = 0.0 [deg]\n\n");
                 goto cleanup;
         }
@@ -1217,9 +1153,9 @@ static void tmk__solve_esa(tmk_model *mdl)
         if (tmk__esa_intermediate_evaluation(mdl, degree_90, uzs_90, uzs_0, heqs, thicknesses, sol, force_boundary, mside, nside) != TMK_SUCCESS)
                 goto cleanup;
 
-        double diff_90 = met_dist_signed(mdl->vals_measure, uzs_90, npts);
+        double diff_90 = tmk__esa_dist_signed(mdl->vals_measure, uzs_90, npts);
         printf("[INFO]   Signed difference with 90.0 [deg]: %.6lf\n", diff_90);
-        if (fabs(diff_90) < (double)MET_TOL) {
+        if (fabs(diff_90) < (double)TMK_ESA_TOL) {
                 printf("[INFO] Equivalent slope angle = 90.0 [deg]\n\n");
                 goto cleanup;
         }
@@ -1231,18 +1167,18 @@ static void tmk__solve_esa(tmk_model *mdl)
         int iter = 0;
         int is_success = 0;
 
-        while (degree_m > (double)TMK_ELT_DEG_LIM && iter <= (int)MET_ITER) {
+        while (degree_m > (double)TMK_ESA_DEG_LIM && iter <= (int)TMK_ESA_ITER) {
                 iter++;
                 printf("[INFO] Iteration %d: trial algle = %.1lf [deg]. ", iter, degree_m);
                 if (tmk__esa_intermediate_evaluation(mdl, degree_m, uzs_m, uzs_0, heqs, thicknesses, sol, force_boundary, mside, nside) != TMK_SUCCESS)
                         goto cleanup;
 
                 // compare half-space, 45-, and 90-degree evaluations
-                double diff_m = met_dist_signed(mdl->vals_measure, uzs_m, npts);
+                double diff_m = tmk__esa_dist_signed(mdl->vals_measure, uzs_m, npts);
 
                 printf("[INFO]   Signed difference with %.1lf [deg]: %.6lf\n", degree_m, diff_m);
 
-                if (fabs(diff_m) < (double)MET_TOL) {
+                if (fabs(diff_m) < (double)TMK_ESA_TOL) {
                         printf("[INFO] Equivalent slope angle = %.1lf [deg]\n\n", degree_m);
                         mdl->slope_angle = degree_m;
                         is_success = 1;
@@ -1257,11 +1193,11 @@ static void tmk__solve_esa(tmk_model *mdl)
         }
 
         if (is_success == 0) {
-                if (degree_m <= (double)TMK_ELT_DEG_LIM) {
+                if (degree_m <= (double)TMK_ESA_DEG_LIM) {
                         mdl->result = TMK_ESA_EXCEED_ITER_LIM;
                         goto cleanup;
                 } else {
-                        printf("[INFO] Equivalent slope angle < %.1lf [deg]\n", (double)TMK_ELT_DEG_LIM);
+                        printf("[INFO] Equivalent slope angle < %.1lf [deg]\n", (double)TMK_ESA_DEG_LIM);
                         mdl->result = TMK_SUCCESS;
                         goto cleanup;
                 }
@@ -1279,9 +1215,9 @@ cleanup:
         free(thicknesses);
 }
 
-static tmk_result tmk__solve_single(double *sol, tmk_hs *halfspace, tmk_load *load, 
-                                    double degree, size_t mside, size_t nside, tmk_vec3 *force_boundary,
-                                    tmk_result *result, int *info_lapack);
+static void tmk__utils_uz_increment(double *uz, tmk_vec3 *evaluation_point,
+                                    tmk_vec3 *force_boundary, tmk_hs *halfspace,
+                                    double *sol, size_t npts_force);
 
 static tmk_result tmk__esa_intermediate_evaluation(tmk_model *mdl, double degree, double *uzs, double *uzs_0,
                                                    double *heqs, double *thicknesses,
@@ -1306,7 +1242,7 @@ static tmk_result tmk__esa_intermediate_evaluation(tmk_model *mdl, double degree
 
                         for (size_t p = 0; p < npts; ++p) {
                                 mdl->pts_measure[p].z = heqs[i];
-                                met_uz_increment(&uzs[p], &mdl->pts_measure[p], force_boundary, &mdl->halfspace[i], sol, n);
+                                tmk__utils_uz_increment(&uzs[p], &mdl->pts_measure[p], force_boundary, &mdl->halfspace[i], sol, n);
                         }
                 } else {
                         if (tmk__solve_single(sol, &mdl->halfspace[i], &mdl->load, degree, mside, nside, force_boundary, &mdl->result, &mdl->info_lapack) != TMK_SUCCESS) {
@@ -1320,9 +1256,9 @@ static tmk_result tmk__esa_intermediate_evaluation(tmk_model *mdl, double degree
                                 double u_top = 0.0;
                                 double u_btm = 0.0;
 
-                                met_uz_increment(&u_top, &mdl->pts_measure[p], force_boundary, &mdl->halfspace[i], sol, n);
+                                tmk__utils_uz_increment(&u_top, &mdl->pts_measure[p], force_boundary, &mdl->halfspace[i], sol, n);
                                 mdl->pts_measure[p].z += thicknesses[i];
-                                met_uz_increment(&u_btm, &mdl->pts_measure[p], force_boundary, &mdl->halfspace[i], sol, n);
+                                tmk__utils_uz_increment(&u_btm, &mdl->pts_measure[p], force_boundary, &mdl->halfspace[i], sol, n);
 
                                 uzs[p] += u_top - u_btm;
                         }
@@ -1344,7 +1280,7 @@ TMKDEF int tmk_checkout(tmk_model *mdl)
                         fprintf(stderr, "[ERROR] Loading information is not found. Did you call `tmk_set_load`?\n");
                         return 1;
                 case TMK_ESA_EXCEED_ITER_LIM:
-                        fprintf(stderr, "[ERROR] Failed to find equivalent slope angle within %d iterations", (int)MET_ITER);
+                        fprintf(stderr, "[ERROR] Failed to find equivalent slope angle within %d iterations", (int)TMK_ESA_ITER);
                         return 1;
                 default: return 0;
         }
@@ -1453,260 +1389,7 @@ void evaluation_evaluate(tmk_vec3 *pts,
         }
 }
 
-void evaluation_evaluate_extrapolate(tmk_vec3 *pts,
-         size_t npts,
-         double *sol,
-         tmk_vec3 *force_boundary,
-         size_t n_forces,
-         tmk_load *load,
-         tmk_hs *halfspace,
-         double *uz)
-{
-        for (size_t p = 0; p < npts; ++p)
-        {
-        *uz = 0.0;
-        double cu[3] = {0};
-
-        tmk__coefficients_distributed_displacement(cu, &pts[p], load, halfspace);
-        *uz += cu[2] * load->intensity;
-
-        // by force boundary
-        for (size_t j = 0; j < n_forces; ++j)
-        {
-        // px
-        tmk__coefficients_concentrated_displacement_x(cu, &pts[p], &force_boundary[j], halfspace);
-        *uz += cu[2] * sol[0 * n_forces + j];
-
-        // py
-        tmk__coefficients_concentrated_displacement_y(cu, &pts[p], &force_boundary[j], halfspace);
-        *uz += cu[2] * sol[1 * n_forces + j];
-
-        // pz
-        tmk__coefficients_concentrated_displacement_z(cu, &pts[p], &force_boundary[j], halfspace);
-        *uz += cu[2] * sol[2 * n_forces + j];
-        }
-        }
-}
-
-void evaluation_evaluate_hs(tmk_vec3 *pts,
-        size_t npts,
-        tmk_load *load,
-        tmk_hs *halfspace,
-        FILE *export)
-{
-        if (export != NULL)
-        {
-        fprintf(export, "x,y,z,sxx,syy,szz,syz,sxz,sxy,ux,uy,uz\n");
-        }
-
-        for (size_t p = 0; p < npts; ++p)
-        {
-        double sxx = 0, syy = 0, szz = 0, syz = 0, sxz = 0, sxy = 0;
-        double ux = 0, uy = 0, uz = 0;
-        double cs[6] = {0};
-        double cu[3] = {0};
-
-        // by load
-        tmk__coefficients_distributed_stress(cs, &pts[p], load, halfspace);
-        sxx += cs[0] * load->intensity;
-        syy += cs[1] * load->intensity;
-        szz += cs[2] * load->intensity;
-        syz += cs[3] * load->intensity;
-        sxz += cs[4] * load->intensity;
-        sxy += cs[5] * load->intensity;
-
-        tmk__coefficients_distributed_displacement(cu, &pts[p], load, halfspace);
-        ux += cu[0] * load->intensity;
-        uy += cu[1] * load->intensity;
-        uz += cu[2] * load->intensity;
-
-        // results
-        if (export == NULL)
-        {
-        printf("Point %zu: (%.0lf, %.0lf, %.0lf)\n", p + 1, pts[p].x, pts[p].y, pts[p].z);
-        printf("Stresses:\n");
-        printf("  xx = %.3e [MPa]\n", sxx);
-        printf("  yy = %.3e [MPa]\n", syy);
-        printf("  zz = %.3e [MPa]\n", szz);
-        printf("  yz = %.3e [MPa]\n", syz);
-        printf("  xz = %.3e [MPa]\n", sxz);
-        printf("  xy = %.3e [MPa]\n\n", sxy);
-        printf("Displacement:\n");
-        printf("  x = %.3e [mm]\n", ux);
-        printf("  y = %.3e [mm]\n", uy);
-        printf("  z = %.3e [mm]\n\n", uz);
-        }
-        else
-        {
-        fprintf(export, "%.0lf,%.0lf,%.0lf,%.3e,%.3e,%.3e,%.3e,%.3e,%.3e,%.3e,%.3e,%.3e\n", pts[p].x, pts[p].y, pts[p].z, sxx, syy, szz, syz, sxz, sxy, ux, uy, uz);
-        }
-        }
-}
-
-void evaluation_free_surface(tmk_vec3 *free_surface, tmk_vec3 *force_boundary, double width, size_t n_per_side, double degree, tmk_load *load, tmk_hs *halfspace, size_t npts_force, double *sol)
-{
-        size_t n = n_per_side * n_per_side;
-
-        double *stress_33 = calloc(n, sizeof(double));
-        double *stress_23 = calloc(n, sizeof(double));
-        double *stress_13 = calloc(n, sizeof(double));
-
-        FILE *zz;
-        FILE *yz;
-        FILE *xz;
-
-        geometry_uniform_test(free_surface, width, n_per_side, degree, load);
-
-        for (size_t i = 0; i < n; i++)
-        {
-        double c[6] = {0.0};
-
-        tmk__coefficients_distributed_stress(c, &free_surface[i], load, halfspace);
-        cblas_dscal(6, load->intensity, c, 1);
-        tmk__coefficients_tensor_transformation_y(c, degree);
-        stress_33[i] += c[2];
-        stress_23[i] += c[3];
-        stress_13[i] += c[4];
-        }
-
-        for (size_t i = 0; i < npts_force; i++)
-        {
-        for (size_t j = 0; j < n; j++)
-        {
-        double c[6] = {0.0};
-
-        tmk__coefficients_concentrated_stress_x(c, &free_surface[j], &force_boundary[i], halfspace);
-        cblas_dscal(6, sol[i], c, 1);
-        tmk__coefficients_tensor_transformation_y(c, degree);
-        stress_33[j] += c[2];
-        stress_23[j] += c[3];
-        stress_13[j] += c[4];
-
-        tmk__coefficients_concentrated_stress_y(c, &free_surface[j], &force_boundary[i], halfspace);
-        cblas_dscal(6, sol[npts_force + i], c, 1);
-        tmk__coefficients_tensor_transformation_y(c, degree);
-        stress_33[j] += c[2];
-        stress_23[j] += c[3];
-        stress_13[j] += c[4];
-
-        tmk__coefficients_concentrated_stress_z(c, &free_surface[j], &force_boundary[i], halfspace);
-        cblas_dscal(6, sol[2 * npts_force + i], c, 1);
-        tmk__coefficients_tensor_transformation_y(c, degree);
-        stress_33[j] += c[2];
-        stress_23[j] += c[3];
-        stress_13[j] += c[4];
-        }
-        }
-
-        geometry_utils_to_view(free_surface, n_per_side, degree);
-
-        zz = fopen("../free_surf/33.dat", "w");
-        yz = fopen("../free_surf/23.dat", "w");
-        xz = fopen("../free_surf/13.dat", "w");
-
-        if (zz == NULL || yz == NULL || xz == NULL)
-        {
-        fprintf(stderr, "[ERROR] Fail to open files\n");
-        exit(EXIT_FAILURE);
-        }
-
-        for (size_t i = 0; i < n_per_side; i++)
-        {
-        for (size_t j = 0; j < n_per_side; j++)
-        {
-        size_t idx = i * n_per_side + j;
-
-        fprintf(zz, "%.2f\t%.2f\t%.6f\n", free_surface[idx].x, free_surface[idx].y, stress_33[idx]);
-        fprintf(yz, "%.2f\t%.2f\t%.6f\n", free_surface[idx].x, free_surface[idx].y, stress_23[idx]);
-        fprintf(xz, "%.2f\t%.2f\t%.6f\n", free_surface[idx].x, free_surface[idx].y, stress_13[idx]);
-        }
-
-        fprintf(zz, "\n");
-        fprintf(yz, "\n");
-        fprintf(xz, "\n");
-        }
-
-        fclose(zz);
-        fclose(yz);
-        fclose(xz);
-
-        free(stress_33);
-        free(stress_23);
-        free(stress_13);
-
-        printf("[STATUS] Stresses on the slope, evaluated at a uniform grid with step size of %.1f [mm], in a square area with width %.1f [mm], return SUCCESS\n", width / ((double)n_per_side - 1.0), width);
-        printf("[INFO] Data exported to ./free_surf\n");
-}
-
-void evaluation_line(tmk_vec3 *evaluation_line, tmk_vec3 *force_boundary, tmk_vec3 *lower, tmk_vec3 *upper, size_t n_eval, tmk_load *load, tmk_hs *halfspace, double *uz, double *sol, size_t npts_force)
-{
-        FILE *fp;
-
-        geometry_uniform_line(evaluation_line, lower, upper, n_eval, load);
-
-        for (size_t i = 0; i < n_eval; i++)
-        {
-        double coeffs[3] = {0.0};
-        tmk__coefficients_distributed_displacement(coeffs, &evaluation_line[i], load, halfspace);
-        uz[i] += coeffs[2] * load->intensity;
-
-        for (size_t j = 0; j < npts_force; j++)
-        {
-        tmk__coefficients_concentrated_displacement_x(coeffs, &evaluation_line[i], &force_boundary[j], halfspace);
-        uz[i] += coeffs[2] * sol[j];
-
-        tmk__coefficients_concentrated_displacement_y(coeffs, &evaluation_line[i], &force_boundary[j], halfspace);
-        uz[i] += coeffs[2] * sol[npts_force + j];
-
-        tmk__coefficients_concentrated_displacement_z(coeffs, &evaluation_line[i], &force_boundary[j], halfspace);
-        uz[i] += coeffs[2] * sol[2 * npts_force + j];
-        }
-        }
-
-        fp = fopen("../python/data/uz.csv", "w");
-
-        if (fp == NULL)
-        {
-        fprintf(stderr, "[ERROR] Fail to open file\n");
-        exit(EXIT_FAILURE);
-        }
-
-        for (size_t i = 0; i < n_eval; i++)
-        {
-        fprintf(fp, "%.2f,%.2f,%.2f,%.6f\n", evaluation_line[i].x, evaluation_line[i].y, evaluation_line[i].z, uz[i]);
-        }
-
-        fclose(fp);
-
-        printf("[STATUS] Displacement in z-direction, evaluated at a line of %zu points, SUCCESS\n", n_eval);
-        printf("[INFO] Data exported to uz.csv\n");
-}
-
-void evaluation_point(tmk_vec3 *evaluation_point, tmk_vec3 *force_boundary, tmk_load *load, tmk_hs *halfspace, double *sol, size_t npts_force)
-{
-        double coeffs[3] = {0.0};
-        double uz = 0.0;
-
-        tmk__coefficients_distributed_displacement(coeffs, evaluation_point, load, halfspace);
-        uz += coeffs[2] * load->intensity;
-
-        for (size_t i = 0; i < npts_force; i++)
-        {
-        tmk__coefficients_concentrated_displacement_x(coeffs, evaluation_point, &force_boundary[i], halfspace);
-        uz += coeffs[2] * sol[i];
-
-        tmk__coefficients_concentrated_displacement_y(coeffs, evaluation_point, &force_boundary[i], halfspace);
-        uz += coeffs[2] * sol[npts_force + i];
-
-        tmk__coefficients_concentrated_displacement_z(coeffs, evaluation_point, &force_boundary[i], halfspace);
-        uz += coeffs[2] * sol[2 * npts_force + i];
-        }
-
-        printf("[STATUS] Displacement in z-direction, evaluated at (%.1f, %.1f, %.1f), SUCCESS\n", evaluation_point->x, evaluation_point->y, evaluation_point->z);
-        printf("[INFO] uz = %.3e [mm]\n", uz);
-}
-
-void geometry_uniform_grid(tmk_vec3 *grid, size_t n_per_side, double h, double degree, tmk_load *load)
+static void tmk__geometry_grid_uniform(tmk_vec3 *grid, size_t n_per_side, double h, double degree, tmk_load *load)
 {
         double radian = degree * M_PI / 180.0;
         double hx;
@@ -1746,117 +1429,7 @@ void geometry_uniform_grid(tmk_vec3 *grid, size_t n_per_side, double h, double d
         }
 }
 
-void geometry_uniform_test(tmk_vec3 *grid, double width, size_t n_per_side, double degree, tmk_load *load)
-{
-        double radian = degree * M_PI / 180.0;
-        double h = width / ((double)n_per_side - 1.0);
-
-        for (size_t i = 0; i < n_per_side; i++)
-        {
-        double x = h * (double)((int)i + 1 - (int)n_per_side);
-
-        for (size_t j = 0; j < n_per_side; j++)
-        {
-        double y = h * (double)(2 * (int)j + 1 - (int)n_per_side) / 2.0;
-
-        size_t idx = i * n_per_side + j;
-
-        grid[idx].x = x * cos(-1.0 * radian);
-        if (fabs(fabs(grid[idx].x - load->center.x) - load->half_width) < 1.0e-9)
-        {
-        grid[idx].x += 0.001;
-        }
-
-        grid[idx].y = y;
-        if (fabs(fabs(grid[idx].y - load->center.y) - load->half_width) < 1.0e-9)
-        {
-        grid[idx].y += 0.001;
-        }
-
-        grid[idx].z = x * sin(-1.0 * radian);
-        }
-        }
-}
-
-// void geometry_uniform_iter(tmk_vec3 *grid, double lx, double ly, size_t nx, size_t ny, double degree)
-// {
-//     double radian = degree * M_PI / 180.0;
-//     double hx = lx / ((double)nx - 1.0);
-//     double hy = ly / ((double)ny - 1.0);
-
-//     for (size_t i = 0; i < nx; i++)
-//     {
-//         double x = hx * (double)((int)i + 1 - (int)nx);
-
-//         for (size_t j = 0; j < ny; j++)
-//         {
-//             double y = hy * (double)(2 * (int)j + 1 - (int)ny) / 2.0;
-
-//             size_t idx = i * ny + j;
-
-//             grid[idx].x = x * cos(-1.0 * radian);
-//             grid[idx].y = y;
-//             grid[idx].z = x * sin(-1.0 * radian);
-//         }
-//     }
-// }
-
-void geometry_uniform_line(tmk_vec3 *array, tmk_vec3 *a, tmk_vec3 *b, size_t npts, tmk_load *load)
-{
-        double dx = b->x - a->x;
-        double dy = b->y - a->y;
-        double dz = b->z - a->z;
-
-        double n_step = (double)npts - 1.0;
-
-        double hx = dx / n_step;
-        double hy = dy / n_step;
-        double hz = dz / n_step;
-
-        for (size_t i = 0; i < npts; i++)
-        {
-        array[i].x += (a->x + (double)i * hx);
-        if (fabs(fabs(array[i].x - load->center.x) - load->half_width) < 1.0e-9)
-        {
-        array[i].x += 0.001;
-        }
-        array[i].y += (a->y + (double)i * hy);
-        if (fabs(fabs(array[i].y - load->center.y) - load->half_width) < 1.0e-9)
-        {
-        array[i].y += 0.001;
-        }
-        array[i].z += (a->z + (double)i * hz);
-        }
-}
-
-// void geometry_uniform_dynamic(tmk_vec3 *grid, double lx, double ly, double h, double degree)
-// {
-//     double radian = degree * M_PI / 180.0;
-
-//     size_t nx = (size_t)(lx / h) + 1;
-//     size_t ny = (size_t)(ly / h) + 1;
-
-//     double hx = lx / (double)(nx - 1);
-//     double hy = ly / (double)(ny - 1);
-
-//     for (size_t i = 0; i < nx; i++)
-//     {
-//         double x = hx * (double)((int)i + 1 - (int)nx);
-
-//         for (size_t j = 0; j < ny; j++)
-//         {
-//             double y = hy * (double)(2 * (int)j + 1 - (int)ny) / 2.0;
-
-//             size_t idx = i * ny + j;
-
-//             grid[idx].x = x * cos(-1.0 * radian);
-//             grid[idx].y = y;
-//             grid[idx].z = x * sin(-1.0 * radian);
-//         }
-//     }
-// }
-
-void geometry_utils_offset(tmk_vec3 *grid, size_t npts, double beta, double x0)
+static void tmk__geometry_grid_offset(tmk_vec3 *grid, size_t npts, double beta, double x0)
 {
         double offset = beta * x0;
 
@@ -1866,734 +1439,6 @@ void geometry_utils_offset(tmk_vec3 *grid, size_t npts, double beta, double x0)
         }
 }
 
-void geometry_utils_to_view(tmk_vec3 *grid, size_t n_per_side, double degree)
-{
-        double radian = degree * M_PI / 180.0;
-
-        for (size_t i = 0; i < n_per_side; i++)
-        {
-        for (size_t j = 0; j < n_per_side; j++)
-        {
-        size_t idx = i * n_per_side + j;
-
-        grid[idx].x = grid[idx].x * cos(radian) - grid[idx].z * sin(radian);
-        }
-        }
-}
-
-double met_backcalc_objective(unsigned n,
-          const double *x,
-          double *grad,
-          void *my_func_data)
-{
-        met_t *met = (met_t *)my_func_data;
-        met_backcalc_double_to_hs(x, met->hs, met->n_layers);
-
-        (void)n;
-        (void)grad;
-
-        if (met->n_layers < 2)
-        {
-        fprintf(stderr, "[ERROR] At least 2 layers are needed for the calculation\n");
-        }
-
-        size_t npts = met->test.npts;
-
-        double *uzs = calloc(npts, sizeof(double));
-        if (uzs == NULL)
-        {
-        fprintf(stderr, "[ERROR] Fail to allocate memory\n");
-        }
-
-        int n_finite = met->n_layers - 1;
-
-        double *thicknesses = calloc((size_t)(n_finite), sizeof(double));
-        if (thicknesses == NULL)
-        {
-        fprintf(stderr, "[ERROR] Failed to allocate memory for thicknesses\n");
-        free(uzs);
-        }
-
-        for (size_t i = 0; i < (size_t)n_finite; ++i)
-        {
-        thicknesses[i] = met->top_depths[i + 1] - met->top_depths[i];
-        }
-
-        double *heqs = calloc(met->n_layers, sizeof(double));
-        if (heqs == NULL)
-        {
-        fprintf(stderr, "[ERROR] Failed to allocate memory for equivalent thicknesses\n");
-        free(uzs);
-        free(thicknesses);
-        }
-
-        for (int i = n_finite; i >= 0; --i)
-        {
-        for (int j = 0; j < i; ++j)
-        {
-        heqs[i] += tmk__elt_equivalent_thickness(thicknesses[j], &met->hs[j], &met->hs[i]);
-        }
-
-        if (i == n_finite)
-        {
-        for (size_t p = 0; p < npts; ++p)
-        {
-        met->test.pts[p].z = heqs[i];
-        uzs[p] += tmk__coefficients_distributed_uz(&met->test.pts[p], &met->test.load, &met->hs[i]) * met->test.load.intensity;
-        }
-        }
-        else
-        {
-        for (size_t p = 0; p < npts; ++p)
-        {
-        met->test.pts[p].z = heqs[i];
-
-        double u_top = tmk__coefficients_distributed_uz(&met->test.pts[p], &met->test.load, &met->hs[i]) * met->test.load.intensity;
-        met->test.pts[p].z += thicknesses[i];
-        double u_btm = tmk__coefficients_distributed_uz(&met->test.pts[p], &met->test.load, &met->hs[i]) * met->test.load.intensity;
-
-        uzs[p] += u_top - u_btm;
-        }
-        }
-        }
-
-        tmk__elt_reset_z(met->test.pts, npts);
-
-        double abs_diff = fabs(met_dist_signed(met->test.vals, uzs, npts));
-
-        printf("[INFO] Solving, diff = %.6lf\n", abs_diff);
-
-        return abs_diff;
-}
-
-double met_backcalc_constraint(unsigned n,
-           const double *x,
-           double *grad,
-           void *data)
-{
-        int i = *((int *)data);
-
-        (void)n;
-        (void)grad;
-
-        return (2 * x[i + 1] - x[i]);
-}
-
-void met_backcalc_hs_to_double(double *x,
-           tmk_hs *hs,
-           size_t n_layers)
-{
-        for (size_t i = 0; i < n_layers; ++i)
-        {
-        x[i] = hs[i].youngs_modulus;
-        x[n_layers + i] = hs[i].poissons_ratio;
-        }
-}
-
-void met_backcalc_double_to_hs(const double *x,
-           tmk_hs *hs,
-           size_t n_layers)
-{
-        for (size_t i = 0; i < n_layers; ++i)
-        {
-        hs[i].youngs_modulus = x[i];
-        hs[i].poissons_ratio = x[n_layers + i];
-        }
-}
-
-int met_backcalc_solve(met_t *met, double tol)
-{
-        size_t nx = met->n_layers * 2;
-
-        // Pre-allocate memory for x
-        double *x = calloc(nx, sizeof(double));
-        if (x == NULL)
-        {
-        fprintf(stderr, "[ERROR] Fail to allocate memory for x\n");
-        return 1;
-        }
-
-        // convert tmk_hs *hs to double *hs: [E_1, ..., E_n, nu_1, ..., nu_n]
-        met_backcalc_hs_to_double(x, met->hs, met->n_layers);
-
-        // Set lower bounds:
-        //   - Young's moduli   > 0
-        //   - Poisson's ratios > 0
-        double *lb = calloc(nx, sizeof(double));
-        if (lb == NULL)
-        {
-        fprintf(stderr, "[ERROR] Fail to allocate memory for lb\n");
-        free(x);
-        return 1;
-        }
-
-        // Set upper bounds:
-        //   - Young's moduli   < inf
-        //   - Poisson's ratios < 1/2
-        double *ub = calloc(nx, sizeof(double));
-        if (ub == NULL)
-        {
-        fprintf(stderr, "[ERROR] Fail to allocate memory for ub\n");
-        free(x);
-        free(lb);
-        return 1;
-        }
-
-        for (int i = 0; i < met->n_layers; ++i)
-        {
-        ub[i] = HUGE_VAL;
-        ub[met->n_layers + i] = 0.5;
-        }
-
-        // Initiate nlopt solver
-        nlopt_opt opt;
-
-        // Set algorithm and dimensionality
-        //   - algorithm: local derivative-free
-        //                (https://nlopt.readthedocs.io/en/latest/NLopt_Algorithms/#local-derivative-free-optimization)
-        //   - dimension: 2 * #layers
-        opt = nlopt_create(NLOPT_LN_COBYLA, nx);
-
-        nlopt_set_lower_bounds(opt, lb);
-        nlopt_set_upper_bounds(opt, ub);
-        nlopt_set_min_objective(opt, met_backcalc_objective, met);
-
-        // Constraint data to pass into met_backcalc_constraint():
-        //   - The relation of neighbouring Young's moduli: E_i >= 2 * E_{i+1},
-        //     where i indicates the ith layer. Thus for a system of n layers,
-        //     (n - 1) pairs of relations should be checked, thus here we pass
-        //     an list of indices [0, 1, ..., (n_layers - 2)]
-
-        for (int i = 0; i < met->n_layers - 1; ++i)
-        {
-        int data = i;
-        nlopt_add_inequality_constraint(opt, met_backcalc_constraint, (void *)&data, 1e-8);
-        }
-
-        nlopt_set_xtol_rel(opt, tol);
-
-        double minf;
-        if (nlopt_optimize(opt, x, &minf) < 0)
-        {
-        fprintf(stderr, "[ERROR] nlopt failed\n");
-        return 1;
-        }
-        else
-        {
-        printf("\n[INFO] Backcalculation successful, final diff = %0.10g\n\n", minf);
-        }
-
-        nlopt_destroy(opt);
-
-        printf("Backcalculation Results:\n");
-        for (int i = 0; i < met->n_layers; ++i)
-        {
-        printf("Layer %d:\n", i + 1);
-        printf("  Young's modulus = %.0lf [MPa]\n", x[i]);
-        printf("  Poisson's ratio = %.2lf [-]\n", x[met->n_layers + i]);
-        }
-        printf("\n");
-
-        free(x);
-        free(lb);
-        free(ub);
-
-        return 0;
-}
-
-// int met_esa_solve(met_t *met, double *angle)
-// {
-//         // return 0: success
-//         // return 1: failure
-//         if (met->n_layers < 2)
-//         {
-//         fprintf(stderr, "[ERROR] At least 2 layers are needed for the calculation\n");
-
-//         // free(met->hs);
-//         // free(met->top_depths);
-//         // free(met->test.pts);
-//         // free(met->test.vals);
-//         // met_cleanup(met);
-//         return 1;
-//         }
-
-//         size_t npts = met->test.npts;
-
-//         double *uzs_0 = calloc(npts, sizeof(double));
-//         if (uzs_0 == NULL)
-//         {
-//         fprintf(stderr, "[ERROR] Fail to allocate memory\n");
-
-//         // free(met->hs);
-//         // free(met->top_depths);
-//         // free(met->test.pts);
-//         // free(met->test.vals);
-//         // met_cleanup(met);
-//         return 1;
-//         }
-
-//         int n_finite = met->n_layers - 1;
-
-//         double *thicknesses = calloc((size_t)(n_finite), sizeof(double));
-//         if (thicknesses == NULL)
-//         {
-//         fprintf(stderr, "[ERROR] Failed to allocate memory for thicknesses\n");
-
-//         // free(met->hs);
-//         // free(met->top_depths);
-//         // free(met->test.pts);
-//         // free(met->test.vals);
-//         // met_cleanup(met);
-//         free(uzs_0);
-
-//         return 1;
-//         }
-
-//         for (size_t i = 0; i < (size_t)n_finite; ++i)
-//         {
-//         thicknesses[i] = met->top_depths[i + 1] - met->top_depths[i];
-//         }
-
-//         double *heqs = calloc(met->n_layers, sizeof(double));
-//         if (heqs == NULL)
-//         {
-//         fprintf(stderr, "[ERROR] Failed to allocate memory for equivalent thicknesses\n");
-
-//         // free(met->hs);
-//         // free(met->top_depths);
-//         // free(met->test.pts);
-//         // free(met->test.vals);
-
-//         // met_cleanup(met);
-//         free(uzs_0);
-//         free(thicknesses);
-
-//         return 1;
-//         }
-
-//         printf("[INFO] Calculating half-space solution...\n");
-
-//         for (int i = n_finite; i >= 0; --i)
-//         {
-//         for (int j = 0; j < i; ++j)
-//         {
-//         heqs[i] += tmk__elt_equivalent_thickness(thicknesses[j], &met->hs[j], &met->hs[i]);
-//         }
-
-//         if (i == n_finite)
-//         {
-//         for (size_t p = 0; p < npts; ++p)
-//         {
-//         met->test.pts[p].z = heqs[i];
-//         uzs_0[p] += tmk__coefficients_distributed_uz(&met->test.pts[p], &met->test.load, &met->hs[i]) * met->test.load.intensity;
-//         }
-//         }
-//         else
-//         {
-//         for (size_t p = 0; p < npts; ++p)
-//         {
-//         met->test.pts[p].z = heqs[i];
-
-//         double u_top = tmk__coefficients_distributed_uz(&met->test.pts[p], &met->test.load, &met->hs[i]) * met->test.load.intensity;
-//         met->test.pts[p].z += thicknesses[i];
-//         double u_btm = tmk__coefficients_distributed_uz(&met->test.pts[p], &met->test.load, &met->hs[i]) * met->test.load.intensity;
-
-//         uzs_0[p] += u_top - u_btm;
-//         }
-//         }
-//         }
-
-//         tmk__elt_reset_z(met->test.pts, npts);
-
-//         double diff_0 = met_dist_signed(met->test.vals, uzs_0, npts);
-//         printf("[INFO] Signed difference with 0.0 [deg]: %.6lf\n", diff_0);
-//         if (fabs(diff_0) < (double)MET_TOL)
-//         {
-//         printf("[INFO] Half-space solution accepted. Equivalent slope angle = 0.0 [deg]\n\n");
-
-//         // free(met->hs);
-//         // free(met->top_depths);
-//         // free(met->test.pts);
-//         // free(met->test.vals);
-
-//         // met_cleanup(met);
-//         free(uzs_0);
-//         free(thicknesses);
-//         free(heqs);
-
-//         return 1;
-//         }
-
-//         double degree_90 = 90.0;
-
-//         size_t mside = 50;
-//         size_t nside = 40;
-//         size_t n = nside * nside;
-
-//         double *sol = calloc(3 * n, sizeof(double));
-//         tmk_vec3 *force_boundary = calloc(n, sizeof(tmk_vec3));
-//         if (sol == NULL || force_boundary == NULL)
-//         {
-//         fprintf(stderr, "[ERROR] Failed to allocate memory\n");
-
-//         // free(met->hs);
-//         // free(met->top_depths);
-//         // free(met->test.pts);
-//         // free(met->test.vals);
-
-//         // met_cleanup(met);
-//         free(uzs_0);
-//         free(heqs);
-//         free(thicknesses);
-
-//         return 1;
-//         }
-
-//         double *uzs_90 = malloc(npts * sizeof(double));
-//         double *uzs_m = malloc(npts * sizeof(double));
-//         if (uzs_90 == NULL || uzs_m == NULL)
-//         {
-//         fprintf(stderr, "[ERROR] Failed to allocate memory\n");
-
-//         // free(met->hs);
-//         // free(met->top_depths);
-//         // free(met->test.pts);
-//         // free(met->test.vals);
-
-//         // met_cleanup(met);
-//         free(uzs_0);
-//         free(heqs);
-//         free(sol);
-//         free(force_boundary);
-//         free(thicknesses);
-
-//         return 1;
-//         }
-
-//         printf("[INFO] Calculating 90-degree solution...\n");
-
-//         if (met_solver_evaluation(uzs_90, met, heqs, sol, degree_90, mside, nside, force_boundary, thicknesses, uzs_0) != 0)
-//         {
-//         // free(met->hs);
-//         // free(met->top_depths);
-//         // free(met->test.pts);
-//         // free(met->test.vals);
-
-//         // met_cleanup(met);
-//         free(uzs_0);
-//         free(uzs_90);
-//         free(uzs_m);
-//         free(heqs);
-//         free(sol);
-//         free(force_boundary);
-//         free(thicknesses);
-
-//         return 1;
-//         }
-
-//         double diff_90 = met_dist_signed(met->test.vals, uzs_90, npts);
-//         printf("[INFO] Signed difference with 90.0 [deg]: %.6lf\n", diff_90);
-//         if (fabs(diff_90) < (double)MET_TOL)
-//         {
-//         printf("[INFO] Equivalent slope angle = 90.0 [deg]\n\n");
-
-//         // free(met->hs);
-//         // free(met->top_depths);
-//         // free(met->test.pts);
-//         // free(met->test.vals);
-
-//         // met_cleanup(met);
-//         free(uzs_0);
-//         free(uzs_90);
-//         free(uzs_m);
-//         free(heqs);
-//         free(sol);
-//         free(force_boundary);
-//         free(thicknesses);
-
-//         return 1;
-//         }
-
-//         double degree_l = 0.0;
-//         double degree_m = 45.0;
-//         double degree_r = 90.0;
-
-//         int iter = 0;
-//         int is_success = 0;
-
-//         while (degree_m > (double)TMK_ELT_DEG_LIM && iter <= (int)MET_ITER)
-//         {
-//         iter++;
-
-//         printf("[INFO] Iteration %d: slope algle = %.1lf [deg]\n", iter, degree_m);
-
-//         if (met_solver_evaluation(uzs_m, met, heqs, sol, degree_m, mside, nside, force_boundary, thicknesses, uzs_0) != 0)
-//         {
-//         // free(met->hs);
-//         // free(met->top_depths);
-//         // free(met->test.pts);
-//         // free(met->test.vals);
-
-//         // met_cleanup(met);
-//         free(uzs_0);
-//         free(uzs_90);
-//         free(uzs_m);
-//         free(heqs);
-//         free(sol);
-//         free(force_boundary);
-//         free(thicknesses);
-
-//         return 1;
-//         }
-
-//         // compare half-space, 45-, and 90-degree evaluations
-//         double diff_m = met_dist_signed(met->test.vals, uzs_m, npts);
-
-//         printf("[INFO] Signed difference with %.1lf [deg]: %.6lf\n", degree_m, diff_m);
-
-//         if (fabs(diff_m) < (double)MET_TOL)
-//         {
-//         printf("[INFO] Equivalent slope angle = %.1lf [deg]\n\n", degree_m);
-//         *angle = degree_m;
-//         is_success = 1;
-//         break;
-//         }
-//         else if (diff_m < 0.0)
-//         {
-//         degree_r = degree_m;
-//         }
-//         else
-//         {
-//         degree_l = degree_m;
-//         }
-
-//         degree_m = degree_l + (degree_r - degree_l) / 2.0;
-//         }
-
-//         if (is_success == 0)
-//         {
-//         if (degree_m <= (double)TMK_ELT_DEG_LIM)
-//         {
-//         fprintf(stderr, "[ERROR] Failed to find equivalent slope angle within %d iterations", (int)MET_ITER);
-
-//         // free(met->hs);
-//         // free(met->top_depths);
-//         // free(met->test.pts);
-//         // free(met->test.vals);
-
-//         // met_cleanup(met);
-//         free(uzs_0);
-//         free(uzs_90);
-//         free(uzs_m);
-//         free(heqs);
-//         free(sol);
-//         free(force_boundary);
-//         free(thicknesses);
-
-//         return 1;
-//         }
-//         else
-//         {
-//         printf("[INFO] Equivalent slope angle < %.1lf [deg]\n", (double)TMK_ELT_DEG_LIM);
-//         }
-//         }
-
-//         // free(met->hs);
-//         // free(met->top_depths);
-//         // free(met->test.pts);
-//         // free(met->test.vals);
-
-//         // met_cleanup(met);
-//         free(uzs_0);
-//         free(uzs_90);
-//         free(uzs_m);
-//         free(heqs);
-//         free(sol);
-//         free(force_boundary);
-//         free(thicknesses);
-
-//         return 0;
-// }
-
-int met_init(met_t *met,
-         int n_layers,
-         tmk_hs *hs,
-         double *top_depths,
-         tmk_load *load,
-         const char *test_results)
-{
-        met->n_layers = n_layers;
-        met->hs = hs;
-        met->top_depths = top_depths;
-
-        int res;
-        if (test_results == NULL)
-        {
-        met_test_t test = {0};
-        test.load = *load;
-        met->test = test;
-        res = 0;
-        }
-        else
-        {
-        met->test.load = *load;
-        res = met_read_csv(met, test_results);
-        }
-
-        return res;
-}
-
-int met_read_csv(met_t *met, const char *filepath)
-{
-        // return 0: OK
-        // return -1: Fail to open test redult file
-        // return -2: Empty file / Invalid data structure
-        // Return -3: Fail to allocate memory
-        FILE *fp = fopen(filepath, "r");
-        if (fp == NULL)
-        {
-        fprintf(stderr, "Fail to open file: %s\n", filepath);
-        return -1;
-        }
-
-        double x, y, val;
-        size_t count = 0;
-        while (fscanf(fp, "%lf,%lf,%lf", &x, &y, &val) == 3)
-        {
-        count++;
-        }
-
-        if (count == 0)
-        {
-        fprintf(stderr, "[ERROR] Empty file or invalid data layout: %s\n", filepath);
-        fclose(fp);
-        return -2;
-        }
-
-        tmk_vec3 *pts = malloc(count * sizeof(tmk_vec3));
-        double *vals = malloc(count * sizeof(double));
-        if (pts == NULL || vals == NULL)
-        {
-        fprintf(stderr, "[ERROR] Fail to allocate memory for %zu entries\n", count);
-        // met_cleanup(met);
-        fclose(fp);
-        return -3;
-        }
-
-        met->test.pts = pts;
-        met->test.vals = vals;
-        met->test.npts = count;
-
-        printf("[INFO] Number of test points: %zu\n", count);
-
-        rewind(fp);
-        size_t idx = 0;
-        while (fscanf(fp, "%lf,%lf,%lf", &x, &y, &val) == 3)
-        {
-        if (fabs(fabs(x - met->test.load.center.x) - met->test.load.half_width) < (double)MET_EPSILON)
-        {
-        x += 0.001;
-        }
-
-        if (fabs(fabs(y - met->test.load.center.y) - met->test.load.half_width) < (double)MET_EPSILON)
-        {
-        y += 0.001;
-        }
-
-        met->test.pts[idx].x = x;
-        met->test.pts[idx].y = y;
-        met->test.pts[idx].z = 0.0;
-
-        met->test.vals[idx] = val;
-
-        // printf("%lf,%lf,%lf\n", x, y, val);
-
-        idx++;
-        }
-
-        fclose(fp);
-        return 0;
-}
-
-// int met_read_csv(met_t *met, const char *filepath)
-// {
-//     size_t capacity = 0;
-
-//     FILE *fp = fopen(filepath, "r");
-//     if (fp == NULL)
-//     {
-//         fprintf(stderr, "%-8sFail to open file: %s\n", "[ERROR]", filepath);
-//         return 1;
-//     }
-
-//     double x, y, val;
-//     while (fscanf(fp, "%lf,%lf,%lf", &x, &y, &val) == 3)
-//     {
-//         if (met->test.npts == capacity)
-//         {
-//             size_t new_capacity = capacity ? capacity * 2 : 128;
-
-//             tmk_vec3 *pts = realloc(met->test.pts, new_capacity * sizeof(tmk_vec3));
-//             double *vals = realloc(met->test.vals, new_capacity * sizeof(double));
-//             if (pts == NULL || vals == NULL)
-//             {
-//                 fprintf(stderr, "%-8sFail to reallocate memory\n", "[ERROR]");
-
-//                 free(met->hs);
-//                 free(met->top_depths);
-//                 free(met->test.pts);
-//                 free(met->test.vals);
-
-//                 return 1;
-//             }
-
-//             met->test.pts = pts;
-//             met->test.vals = vals;
-//         }
-
-//         if (fabs(fabs(x - met->test.load.center.x) - met->test.load.half_width) < (double)MET_EPSILON)
-//         {
-//             x += 0.001;
-//         }
-
-//         if (fabs(fabs(y - met->test.load.center.y) - met->test.load.half_width) < (double)MET_EPSILON)
-//         {
-//             y += 0.001;
-//         }
-
-//         met->test.pts[met->test.npts].x = x;
-//         met->test.pts[met->test.npts].y = y;
-//         met->test.pts[met->test.npts].z = 0.0;
-
-//         met->test.vals[met->test.npts] = val;
-
-//         met->test.npts++;
-//     }
-
-//     fclose(fp);
-
-//     return 0;
-// }
-
-void met_cleanup(met_t *met)
-{
-        if (met->test.pts != NULL)
-        {
-        free(met->test.pts);
-        }
-
-        if (met->test.vals != NULL)
-        {
-        free(met->test.vals);
-        }
-
-        met = NULL;
-}
-
-#ifndef TMK_ELT_FACTOR
-#define TMK_ELT_FACTOR 0.9
-#endif
-
 static double tmk__elt_equivalent_thickness(double current_thickness, tmk_hs *current, tmk_hs *target)
 {
         double ratio = current->youngs_modulus * (1.0 - pow(target->poissons_ratio, 2.0)) / target->youngs_modulus / (1.0 - pow(current->poissons_ratio, 2.0));
@@ -2602,66 +1447,6 @@ static double tmk__elt_equivalent_thickness(double current_thickness, tmk_hs *cu
         return heq;
 }
 
-// int met_solver_evaluation(double *uzs,
-//           met_t *met,
-//           double *heqs,
-//           double *sol,
-//           double degree,
-//           size_t mside,
-//           size_t nside,
-//           tmk_vec3 *force_boundary,
-//           double *thicknesses,
-//           double *uzs_0)
-// {
-//         int n_finite = met->n_layers - 1;
-//         size_t npts = met->test.npts;
-//         size_t n = nside * nside;
-
-//         memcpy(uzs, uzs_0, npts * sizeof(double));
-
-//         for (int i = n_finite; i >= 0; --i)
-//         {
-//         if (i == n_finite)
-//         {
-//         if (solver_solve(sol, &met->hs[i], &met->test.load, degree, mside, nside, force_boundary) != 0)
-//         {
-//         return 1;
-//         }
-
-//         for (size_t p = 0; p < npts; ++p)
-//         {
-//         met->test.pts[p].z = heqs[i];
-//         met_uz_increment(&uzs[p], &met->test.pts[p], force_boundary, &met->hs[i], sol, n);
-//         }
-//         }
-//         else
-//         {
-//         if (solver_solve(sol, &met->hs[i], &met->test.load, degree, mside, nside, force_boundary) != 0)
-//         {
-//         return 1;
-//         }
-
-//         for (size_t p = 0; p < npts; ++p)
-//         {
-//         met->test.pts[p].z = heqs[i];
-
-//         double u_top = 0.0;
-//         double u_btm = 0.0;
-
-//         met_uz_increment(&u_top, &met->test.pts[p], force_boundary, &met->hs[i], sol, n);
-//         met->test.pts[p].z += thicknesses[i];
-//         met_uz_increment(&u_btm, &met->test.pts[p], force_boundary, &met->hs[i], sol, n);
-
-//         uzs[p] += u_top - u_btm;
-//         }
-//         }
-//         }
-
-//         tmk__elt_reset_z(met->test.pts, npts);
-
-//         return 0;
-// }
-
 static void tmk__elt_reset_z(tmk_vec3 *a, size_t npts)
 {
         for (size_t p = 0; p < npts; ++p) {
@@ -2669,7 +1454,7 @@ static void tmk__elt_reset_z(tmk_vec3 *a, size_t npts)
         }
 }
 
-double met_dist_signed(double *interest,
+double tmk__esa_dist_signed(double *interest,
            double *target,
            size_t n)
 {
@@ -2683,7 +1468,7 @@ double met_dist_signed(double *interest,
         return a;
 }
 
-void met_uz_increment(double *uz,
+void tmk__utils_uz_increment(double *uz,
           tmk_vec3 *evaluation_point,
           tmk_vec3 *force_boundary,
           tmk_hs *halfspace,
@@ -2704,229 +1489,6 @@ void met_uz_increment(double *uz,
         *uz += coeffs[2] * sol[2 * npts_force + i];
         }
 }
-
-// int met_evaluate_extrapolate(met_t *met,
-//          double angle,
-//          tmk_vec3 *eval_pts,
-//          size_t npts,
-//          size_t nside,
-//          const char *export_path)
-// {
-//         if (met->n_layers < 2)
-//         {
-//         fprintf(stderr, "[ERROR] At least 2 layers are needed for the calculation\n");
-
-//         // free(met->hs);
-//         // free(met->top_depths);
-
-//         // met_cleanup(met);
-//         return 1;
-//         }
-
-//         double *uzs_0 = calloc(npts, sizeof(double));
-//         if (uzs_0 == NULL)
-//         {
-//         fprintf(stderr, "[ERROR] Fail to allocate memory\n");
-
-//         // free(met->hs);
-//         // free(met->top_depths);
-
-//         // met_cleanup(met);
-//         return 1;
-//         }
-
-//         int n_finite = met->n_layers - 1;
-
-//         double *thicknesses = calloc((size_t)(n_finite), sizeof(double));
-//         if (thicknesses == NULL)
-//         {
-//         fprintf(stderr, "[ERROR] Failed to allocate memory for thicknesses\n");
-
-//         // free(met->hs);
-//         // free(met->top_depths);
-
-//         // met_cleanup(met);
-//         free(uzs_0);
-
-//         return 1;
-//         }
-
-//         for (size_t i = 0; i < (size_t)n_finite; ++i)
-//         {
-//         thicknesses[i] = met->top_depths[i + 1] - met->top_depths[i];
-//         }
-
-//         double *heqs = calloc(met->n_layers, sizeof(double));
-//         if (heqs == NULL)
-//         {
-//         fprintf(stderr, "[ERROR] Failed to allocate memory for equivalent thicknesses\n");
-
-//         // free(met->hs);
-//         // free(met->top_depths);
-
-//         // met_cleanup(met);
-//         free(uzs_0);
-//         free(thicknesses);
-
-//         return 1;
-//         }
-
-//         printf("[INFO] Generating evaluation data with slope angle %.1lf [deg] ...\n", angle);
-
-//         for (int i = n_finite; i >= 0; --i)
-//         {
-//         for (int j = 0; j < i; ++j)
-//         {
-//         heqs[i] += tmk__elt_equivalent_thickness(thicknesses[j], &met->hs[j], &met->hs[i]);
-//         }
-
-//         if (i == n_finite)
-//         {
-//         for (size_t p = 0; p < npts; ++p)
-//         {
-//         eval_pts[p].z = heqs[i];
-//         uzs_0[p] += tmk__coefficients_distributed_uz(&eval_pts[p], &met->test.load, &met->hs[i]) * met->test.load.intensity;
-//         }
-//         }
-//         else
-//         {
-//         for (size_t p = 0; p < npts; ++p)
-//         {
-//         eval_pts[p].z = heqs[i];
-
-//         double u_top = tmk__coefficients_distributed_uz(&eval_pts[p], &met->test.load, &met->hs[i]) * met->test.load.intensity;
-//         eval_pts[p].z += thicknesses[i];
-//         double u_btm = tmk__coefficients_distributed_uz(&eval_pts[p], &met->test.load, &met->hs[i]) * met->test.load.intensity;
-
-//         uzs_0[p] += u_top - u_btm;
-//         }
-//         }
-//         }
-
-//         tmk__elt_reset_z(eval_pts, npts);
-
-//         double *uzs = calloc(npts, sizeof(double));
-//         if (uzs == NULL)
-//         {
-//         fprintf(stderr, "[ERROR] Failed to allocate memory\n");
-
-//         // free(met->hs);
-//         // free(met->top_depths);
-
-//         // met_cleanup(met);
-//         free(uzs_0);
-//         free(thicknesses);
-//         free(heqs);
-//         free(eval_pts);
-
-//         return 1;
-//         }
-
-//         if (angle >= 10.0)
-//         {
-//         size_t mside = nside * 5 / 4;
-//         // size_t nside = 40;
-//         size_t n = nside * nside;
-
-//         double *sol = calloc(3 * n, sizeof(double));
-//         tmk_vec3 *force_boundary = calloc(n, sizeof(tmk_vec3));
-//         if (sol == NULL || force_boundary == NULL)
-//         {
-//         fprintf(stderr, "[ERROR] Failed to allocate memory\n");
-
-//         // free(met->hs);
-//         // free(met->top_depths);
-
-//         // met_cleanup(met);
-//         free(uzs_0);
-//         free(thicknesses);
-//         free(heqs);
-//         free(eval_pts);
-//         free(uzs);
-
-//         return 1;
-//         }
-
-//         if (tmk__elt_intermediate_evaluation(mdl, uzs, uzs_0, heqs, thicknesses, sol, force_boundary, mside, nside) != TMK_SUCCESS)
-//         {
-//         // free(met->hs);
-//         // free(met->top_depths);
-
-//         // met_cleanup(met);
-//         free(uzs_0);
-//         free(thicknesses);
-//         free(heqs);
-//         free(eval_pts);
-//         free(uzs);
-//         free(sol);
-//         free(force_boundary);
-
-//         return 1;
-//         }
-
-//         free(sol);
-//         free(force_boundary);
-//         }
-//         else
-//         {
-//         for (size_t i = 0; i < npts; ++i)
-//         {
-//         uzs[i] = uzs_0[i];
-//         }
-//         }
-
-//         if (export_path == NULL)
-//         {
-//         for (size_t p = 0; p < npts; ++p)
-//         {
-//         printf("n = %zu, 1/n = %.3lf\n", nside * nside, 1.0 / (double)(nside * nside));
-//         printf("%.1lf,%.1lf,%.3e\n", eval_pts[p].x, eval_pts[p].y, uzs[p]);
-//         }
-//         }
-//         else
-//         {
-//         FILE *fp = fopen(export_path, "w");
-//         if (fp == NULL)
-//         {
-//         fprintf(stderr, "[ERROR] Fail to open file %s\n", export_path);
-
-//         // free(met->hs);
-//         // free(met->top_depths);
-
-//         // met_cleanup(met);
-//         free(uzs_0);
-//         free(thicknesses);
-//         free(heqs);
-//         free(eval_pts);
-//         free(uzs);
-
-//         free(uzs);
-
-//         return 1;
-//         }
-
-//         for (size_t p = 0; p < npts; ++p)
-//         {
-//         fprintf(fp, "%.6lf,%.6lf,%.6lf\n", eval_pts[p].x, eval_pts[p].y, uzs[p]);
-//         }
-
-//         // free(met->hs);
-//         // free(met->top_depths);
-
-//         // met_cleanup(met);
-//         free(uzs_0);
-//         free(thicknesses);
-//         free(heqs);
-//         free(eval_pts);
-//         free(uzs);
-
-//         fclose(fp);
-
-//         printf("[INFO] Evaluation data saved as %s\n", export_path);
-//         }
-
-//         return 0;
-// }
 
 static tmk_result tmk__elt_intermediate_evaluation(tmk_model *mdl, double *uzs, double *uzs_0, 
                                                    double *heqs, double *thicknesses, 
@@ -2952,7 +1514,7 @@ static tmk_result tmk__elt_intermediate_evaluation(tmk_model *mdl, double *uzs, 
 
                         for (int p = 0; p < mdl->npts_eval; ++p) {
                                 mdl->pts_eval[p].z = heqs[i];
-                                met_uz_increment(&uzs[p], &mdl->pts_eval[p], force_boundary, &mdl->halfspace[i], sol, n);
+                                tmk__utils_uz_increment(&uzs[p], &mdl->pts_eval[p], force_boundary, &mdl->halfspace[i], sol, n);
                         }
                 } else {
                         if (tmk__solve_single(sol, &mdl->halfspace[i], &mdl->load, 
@@ -2968,9 +1530,9 @@ static tmk_result tmk__elt_intermediate_evaluation(tmk_model *mdl, double *uzs, 
                                 double u_top = 0.0;
                                 double u_btm = 0.0;
 
-                                met_uz_increment(&u_top, &mdl->pts_eval[p], force_boundary, &mdl->halfspace[i], sol, n);
+                                tmk__utils_uz_increment(&u_top, &mdl->pts_eval[p], force_boundary, &mdl->halfspace[i], sol, n);
                                 mdl->pts_eval[p].z += thicknesses[i];
-                                met_uz_increment(&u_btm, &mdl->pts_eval[p], force_boundary, &mdl->halfspace[i], sol, n);
+                                tmk__utils_uz_increment(&u_btm, &mdl->pts_eval[p], force_boundary, &mdl->halfspace[i], sol, n);
 
                                 uzs[p] += u_top - u_btm;
                         }
@@ -3050,9 +1612,9 @@ static tmk_result tmk__solve_single(double *sol, tmk_hs *halfspace, tmk_load *lo
                 goto cleanup;
         }
 
-        geometry_uniform_grid(simulated_boundary, mside, hm, degree, load);
-        geometry_uniform_grid(force_boundary, nside, hn, degree, load);
-        geometry_utils_offset(force_boundary, n, beta, x0);
+        tmk__geometry_grid_uniform(simulated_boundary, mside, hm, degree, load);
+        tmk__geometry_grid_uniform(force_boundary, nside, hn, degree, load);
+        tmk__geometry_grid_offset(force_boundary, n, beta, x0);
 
         for (int j = 0; j < n; ++j) {
                 for (int i = 0; i < m; ++i) {
@@ -3082,7 +1644,7 @@ static tmk_result tmk__solve_single(double *sol, tmk_hs *halfspace, tmk_load *lo
                 }
         }
 
-        utils_memory_fill_lhs(lhs, m, n, s33_px, s33_py, s33_pz, s23_px, s23_py, s23_pz, s13_px, s13_py, s13_pz);
+        tmk__memory_lhs_fill(lhs, m, n, s33_px, s33_py, s33_pz, s23_px, s23_py, s23_pz, s13_px, s13_py, s13_pz);
 
         for (int i = 0; i < m; ++i) {
                 double coeffs[6] = {0.0};
@@ -3133,7 +1695,7 @@ cleanup:
         return *result;
 }
 
-void utils_memory_fill_lhs(double *lhs, size_t m, size_t n, double *s33_px, double *s33_py, double *s33_pz, double *s23_px, double *s23_py, double *s23_pz, double *s13_px, double *s13_py, double *s13_pz)
+static void tmk__memory_lhs_fill(double *lhs, size_t m, size_t n, double *s33_px, double *s33_py, double *s33_pz, double *s23_px, double *s23_py, double *s23_pz, double *s13_px, double *s13_py, double *s13_pz)
 {
 
         double *blocks[3][3] = {
@@ -3156,313 +1718,313 @@ void utils_memory_fill_lhs(double *lhs, size_t m, size_t n, double *s33_px, doub
         }
 }
 
-void boundary_dynamic(double *len_side_final, double *len_btm_final, tmk_load *load, tmk_hs *halfspace, double degree, double threshold, double h_default)
-{
-        int iter = 0;
+// static void tmk__boundary_dynamic(double *len_side_final, double *len_btm_final, tmk_load *load, tmk_hs *halfspace, double degree, double threshold, double h_default)
+// {
+//         int iter = 0;
 
-        double radian = degree * M_PI / 180.0;
+//         double radian = degree * M_PI / 180.0;
 
-        *len_side_final = 0.0;
-        *len_btm_final = 0.0;
+//         *len_side_final = 0.0;
+//         *len_btm_final = 0.0;
 
-        for (size_t k = 2; k < 5; k++)
-        {
-        int side_not_exceed = 0;
-        int btm_not_exceed = 0;
+//         for (size_t k = 2; k < 5; k++)
+//         {
+//         int side_not_exceed = 0;
+//         int btm_not_exceed = 0;
 
-        double len_side;
-        double len_btm;
+//         double len_side;
+//         double len_btm;
 
-        double inc_side;
-        double inc_btm;
+//         double inc_side;
+//         double inc_btm;
 
-        iter = 0;
+//         iter = 0;
 
-        len_side = 2.0 * load->half_width + 2.0 * load->center.x;
-        len_btm = len_side / 2.0;
+//         len_side = 2.0 * load->half_width + 2.0 * load->center.x;
+//         len_btm = len_side / 2.0;
 
-        inc_side = len_side / 2.0;
-        inc_btm = len_btm / 2.0;
+//         inc_side = len_side / 2.0;
+//         inc_btm = len_btm / 2.0;
 
-        printf("%-8sForward calculation of the simulated boundary area for stress %zu3 ...\n", "[INFO]", (5 - k));
+//         printf("%-8sForward calculation of the simulated boundary area for stress %zu3 ...\n", "[INFO]", (5 - k));
 
-        do
-        {
-        size_t nstep_side = (size_t)(len_side / h_default);
-        size_t nstep_btm = (size_t)(len_btm / h_default);
-
-        double h_side = len_side / (double)nstep_side;
-        double h_btm = len_btm / (double)nstep_btm;
-
-        size_t n_side = nstep_side;
-        size_t n_btm = nstep_btm + 1;
+//         do
+//         {
+//         size_t nstep_side = (size_t)(len_side / h_default);
+//         size_t nstep_btm = (size_t)(len_btm / h_default);
+
+//         double h_side = len_side / (double)nstep_side;
+//         double h_btm = len_btm / (double)nstep_btm;
+
+//         size_t n_side = nstep_side;
+//         size_t n_btm = nstep_btm + 1;
 
-        iter += 1;
-
-        if (!side_not_exceed)
-        {
-        side_not_exceed = 1;
+//         iter += 1;
+
+//         if (!side_not_exceed)
+//         {
+//         side_not_exceed = 1;
 
-        for (size_t i = 0; i < n_side; i++)
-        {
-        double stress[6] = {0.0};
+//         for (size_t i = 0; i < n_side; i++)
+//         {
+//         double stress[6] = {0.0};
 
-        tmk_vec3 side_pt = {0.0, 0.0, 0.0};
+//         tmk_vec3 side_pt = {0.0, 0.0, 0.0};
 
-        side_pt.x = -1.0 * ((double)i * h_side) * cos(-1.0 * radian);
-        side_pt.y = len_btm;
-        side_pt.z = -1.0 * ((double)i * h_side) * sin(-1.0 * radian);
+//         side_pt.x = -1.0 * ((double)i * h_side) * cos(-1.0 * radian);
+//         side_pt.y = len_btm;
+//         side_pt.z = -1.0 * ((double)i * h_side) * sin(-1.0 * radian);
 
-        tmk__coefficients_distributed_stress(stress, &side_pt, load, halfspace);
-        cblas_dscal(6, load->intensity, stress, 1);
-        tmk__coefficients_tensor_transformation_y(stress, degree);
+//         tmk__coefficients_distributed_stress(stress, &side_pt, load, halfspace);
+//         cblas_dscal(6, load->intensity, stress, 1);
+//         tmk__coefficients_tensor_transformation_y(stress, degree);
 
-        if (fabs(stress[k] / load->intensity) > threshold)
-        {
-        // printf("%zu/%zu, (%.2f, %.2f, %.2f), %.3e\n", i, n_side, side_pt.x, side_pt.y, side_pt.z, fabs(stress[k] / load->intensity));
-        side_not_exceed = 0;
-        break;
-        }
-        }
-        }
-
-        if (!btm_not_exceed)
-        {
-        btm_not_exceed = 1;
-
-        for (size_t i = 0; i < n_btm; i++)
-        {
-        double stress[6] = {0.0};
-
-        tmk_vec3 btm_pt = {0.0, 0.0, 0.0};
-
-        btm_pt.x = -1.0 * len_side * cos(-1.0 * radian);
-        btm_pt.y = (double)i * h_btm;
-        btm_pt.z = -1.0 * len_side * sin(-1.0 * radian);
-
-        tmk__coefficients_distributed_stress(stress, &btm_pt, load, halfspace);
-        cblas_dscal(6, load->intensity, stress, 1);
-        tmk__coefficients_tensor_transformation_y(stress, degree);
-
-        if (fabs(stress[k] / load->intensity) > threshold)
-        {
-        // printf("%zu/%zu, (%.2f, %.2f, %.2f), %.3e\n", i, n_btm, btm_pt.x, btm_pt.y, btm_pt.z, fabs(stress[k] / load->intensity));
-        btm_not_exceed = 0;
-        break;
-        }
-        }
-        }
-
-        printf("[INFO] Iteration %d, ", iter);
-        printf("x: %d, y: %d\n", side_not_exceed, btm_not_exceed);
-
-        if (!side_not_exceed)
-        {
-        len_btm += inc_btm;
-        }
-
-        if (!btm_not_exceed)
-        {
-        len_side += inc_side;
-        }
-
-        } while (!(side_not_exceed && btm_not_exceed));
-
-        if (iter == 1)
-        {
-        printf("%-8sBackward calculation of the simulated boundary area for stress %zu3 ...\n", "[INFO]", (5 - k));
-
-        // len_btm -= h_default;
-        // len_side -= h_default;
-
-        do
-        {
-        if (side_not_exceed)
-        {
-        if (!(len_btm < h_default))
-        {
-        len_btm -= h_default;
-        }
-        }
-
-        if (btm_not_exceed)
-        {
-        if (!(len_side < h_default))
-        {
-        len_side -= h_default;
-        }
-        }
-
-        size_t nstep_side = (size_t)(len_side / h_default);
-        size_t nstep_btm = (size_t)(len_btm / h_default);
-
-        double h_side = len_side / (double)nstep_side;
-        double h_btm = len_btm / (double)nstep_btm;
-
-        size_t n_side = nstep_side;
-        size_t n_btm = nstep_btm + 1;
-
-        iter += 1;
-
-        if (side_not_exceed)
-        {
-        for (size_t i = 0; i < n_side; i++)
-        {
-        double stress[6] = {0.0};
-
-        tmk_vec3 side_pt = {0.0, 0.0, 0.0};
-
-        side_pt.x = -1.0 * ((double)i * h_side) * cos(-1.0 * radian);
-        side_pt.y = len_btm;
-        side_pt.z = -1.0 * ((double)i * h_side) * sin(-1.0 * radian);
-
-        tmk__coefficients_distributed_stress(stress, &side_pt, load, halfspace);
-        cblas_dscal(6, load->intensity, stress, 1);
-        tmk__coefficients_tensor_transformation_y(stress, degree);
-
-        if (fabs(stress[k] / load->intensity) > threshold)
-        {
-        // printf("%zu/%zu, (%.2f, %.2f, %.2f), %.3e\n", i, n_side, side_pt.x, side_pt.y, side_pt.z, fabs(stress[k] / load->intensity));
-        len_btm += h_default;
-        side_not_exceed = 0;
-        break;
-        }
-        }
-        }
-
-        if (btm_not_exceed)
-        {
-        for (size_t i = 0; i < n_btm; i++)
-        {
-        double stress[6] = {0.0};
-
-        tmk_vec3 btm_pt = {0.0, 0.0, 0.0};
-
-        btm_pt.x = -1.0 * len_side * cos(-1.0 * radian);
-        btm_pt.y = (double)i * h_btm;
-        btm_pt.z = -1.0 * len_side * sin(-1.0 * radian);
-
-        tmk__coefficients_distributed_stress(stress, &btm_pt, load, halfspace);
-        cblas_dscal(6, load->intensity, stress, 1);
-        tmk__coefficients_tensor_transformation_y(stress, degree);
-
-        if (fabs(stress[k] / load->intensity) > threshold)
-        {
-        // printf("%zu/%zu, (%.2f, %.2f, %.2f), %.3e\n", i, n_side, btm_pt.x, btm_pt.y, btm_pt.z, fabs(stress[k] / load->intensity));
-        len_side += h_default;
-        btm_not_exceed = 0;
-        break;
-        }
-        }
-        }
-
-        printf("%-8sIteration %d, ", "[INFO]", iter);
-        printf("x: %d, y: %d\n", side_not_exceed, btm_not_exceed);
-
-        } while ((side_not_exceed && !(len_btm < h_default)) || (btm_not_exceed && !(len_side < h_default)));
-
-        printf("%-8sBackward calculation, return %d, %d, %d, %d\n", "[INFO]", side_not_exceed, btm_not_exceed, len_side < h_default, len_btm < h_default);
-        }
-        else
-        {
-        printf("%-8sBackward calculation of the simulated boundary area for stress %zu3 ...\n", "[INFO]", (5 - k));
-
-        do
-        {
-        if (side_not_exceed)
-        {
-        len_btm -= h_default;
-        }
-
-        if (btm_not_exceed)
-        {
-        len_side -= h_default;
-        }
-
-        size_t nstep_side = (size_t)(len_side / h_default);
-        size_t nstep_btm = (size_t)(len_btm / h_default);
-
-        double h_side = len_side / (double)nstep_side;
-        double h_btm = len_btm / (double)nstep_btm;
-
-        size_t n_side = nstep_side;
-        size_t n_btm = nstep_btm + 1;
-
-        iter += 1;
-
-        if (side_not_exceed)
-        {
-        for (size_t i = 0; i < n_side; i++)
-        {
-        double stress[6] = {0.0};
-
-        tmk_vec3 side_pt = {0.0, 0.0, 0.0};
-
-        side_pt.x = -1.0 * ((double)i * h_side) * cos(-1.0 * radian);
-        side_pt.y = len_btm;
-        side_pt.z = -1.0 * ((double)i * h_side) * sin(-1.0 * radian);
-
-        tmk__coefficients_distributed_stress(stress, &side_pt, load, halfspace);
-        cblas_dscal(6, load->intensity, stress, 1);
-        tmk__coefficients_tensor_transformation_y(stress, degree);
-
-        if (fabs(stress[k] / load->intensity) > threshold)
-        {
-        side_not_exceed = 0;
-        len_btm += h_default;
-        break;
-        }
-        }
-        }
-
-        if (btm_not_exceed)
-        {
-        for (size_t i = 0; i < n_btm; i++)
-        {
-        double stress[6] = {0.0};
-
-        tmk_vec3 btm_pt = {0.0, 0.0, 0.0};
-
-        btm_pt.x = -1.0 * len_side * cos(-1.0 * radian);
-        btm_pt.y = (double)i * h_btm;
-        btm_pt.z = -1.0 * len_side * sin(-1.0 * radian);
-
-        tmk__coefficients_distributed_stress(stress, &btm_pt, load, halfspace);
-        cblas_dscal(6, load->intensity, stress, 1);
-        tmk__coefficients_tensor_transformation_y(stress, degree);
-
-        if (fabs(stress[k] / load->intensity) > threshold)
-        {
-        btm_not_exceed = 0;
-        len_side += h_default;
-        break;
-        }
-        }
-        }
-
-        printf("%-8sIteration %d, ", "[INFO]", iter);
-        printf("x: %d, y: %d\n", side_not_exceed, btm_not_exceed);
-
-        } while (side_not_exceed || btm_not_exceed);
-
-        printf("%-8sBackward calculation, return %d, %d\n", "[INFO]", side_not_exceed, btm_not_exceed);
-        }
-
-        if (len_side > *len_side_final)
-        {
-        *len_side_final = len_side;
-        }
-
-        if (len_btm > *len_btm_final)
-        {
-        *len_btm_final = len_btm;
-        }
-
-        printf("\n%-8sTest for stress %zu3 finished after iteration %d\n", "[INFO]", (5 - k), iter);
-        printf("%-8sFor stress %zu3, required domain of calculation is: x = %.1f [mm], y = %.1f [mm], viewed perpendicular to the area\n\n", "[INFO]", (5 - k), len_side, len_btm);
-        }
-        printf("%-8sFinal result: x = %.1f [mm], y = %.1f [mm]\n", "[INFO]", *len_side_final, *len_btm_final);
-}
+//         if (fabs(stress[k] / load->intensity) > threshold)
+//         {
+//         // printf("%zu/%zu, (%.2f, %.2f, %.2f), %.3e\n", i, n_side, side_pt.x, side_pt.y, side_pt.z, fabs(stress[k] / load->intensity));
+//         side_not_exceed = 0;
+//         break;
+//         }
+//         }
+//         }
+
+//         if (!btm_not_exceed)
+//         {
+//         btm_not_exceed = 1;
+
+//         for (size_t i = 0; i < n_btm; i++)
+//         {
+//         double stress[6] = {0.0};
+
+//         tmk_vec3 btm_pt = {0.0, 0.0, 0.0};
+
+//         btm_pt.x = -1.0 * len_side * cos(-1.0 * radian);
+//         btm_pt.y = (double)i * h_btm;
+//         btm_pt.z = -1.0 * len_side * sin(-1.0 * radian);
+
+//         tmk__coefficients_distributed_stress(stress, &btm_pt, load, halfspace);
+//         cblas_dscal(6, load->intensity, stress, 1);
+//         tmk__coefficients_tensor_transformation_y(stress, degree);
+
+//         if (fabs(stress[k] / load->intensity) > threshold)
+//         {
+//         // printf("%zu/%zu, (%.2f, %.2f, %.2f), %.3e\n", i, n_btm, btm_pt.x, btm_pt.y, btm_pt.z, fabs(stress[k] / load->intensity));
+//         btm_not_exceed = 0;
+//         break;
+//         }
+//         }
+//         }
+
+//         printf("[INFO] Iteration %d, ", iter);
+//         printf("x: %d, y: %d\n", side_not_exceed, btm_not_exceed);
+
+//         if (!side_not_exceed)
+//         {
+//         len_btm += inc_btm;
+//         }
+
+//         if (!btm_not_exceed)
+//         {
+//         len_side += inc_side;
+//         }
+
+//         } while (!(side_not_exceed && btm_not_exceed));
+
+//         if (iter == 1)
+//         {
+//         printf("%-8sBackward calculation of the simulated boundary area for stress %zu3 ...\n", "[INFO]", (5 - k));
+
+//         // len_btm -= h_default;
+//         // len_side -= h_default;
+
+//         do
+//         {
+//         if (side_not_exceed)
+//         {
+//         if (!(len_btm < h_default))
+//         {
+//         len_btm -= h_default;
+//         }
+//         }
+
+//         if (btm_not_exceed)
+//         {
+//         if (!(len_side < h_default))
+//         {
+//         len_side -= h_default;
+//         }
+//         }
+
+//         size_t nstep_side = (size_t)(len_side / h_default);
+//         size_t nstep_btm = (size_t)(len_btm / h_default);
+
+//         double h_side = len_side / (double)nstep_side;
+//         double h_btm = len_btm / (double)nstep_btm;
+
+//         size_t n_side = nstep_side;
+//         size_t n_btm = nstep_btm + 1;
+
+//         iter += 1;
+
+//         if (side_not_exceed)
+//         {
+//         for (size_t i = 0; i < n_side; i++)
+//         {
+//         double stress[6] = {0.0};
+
+//         tmk_vec3 side_pt = {0.0, 0.0, 0.0};
+
+//         side_pt.x = -1.0 * ((double)i * h_side) * cos(-1.0 * radian);
+//         side_pt.y = len_btm;
+//         side_pt.z = -1.0 * ((double)i * h_side) * sin(-1.0 * radian);
+
+//         tmk__coefficients_distributed_stress(stress, &side_pt, load, halfspace);
+//         cblas_dscal(6, load->intensity, stress, 1);
+//         tmk__coefficients_tensor_transformation_y(stress, degree);
+
+//         if (fabs(stress[k] / load->intensity) > threshold)
+//         {
+//         // printf("%zu/%zu, (%.2f, %.2f, %.2f), %.3e\n", i, n_side, side_pt.x, side_pt.y, side_pt.z, fabs(stress[k] / load->intensity));
+//         len_btm += h_default;
+//         side_not_exceed = 0;
+//         break;
+//         }
+//         }
+//         }
+
+//         if (btm_not_exceed)
+//         {
+//         for (size_t i = 0; i < n_btm; i++)
+//         {
+//         double stress[6] = {0.0};
+
+//         tmk_vec3 btm_pt = {0.0, 0.0, 0.0};
+
+//         btm_pt.x = -1.0 * len_side * cos(-1.0 * radian);
+//         btm_pt.y = (double)i * h_btm;
+//         btm_pt.z = -1.0 * len_side * sin(-1.0 * radian);
+
+//         tmk__coefficients_distributed_stress(stress, &btm_pt, load, halfspace);
+//         cblas_dscal(6, load->intensity, stress, 1);
+//         tmk__coefficients_tensor_transformation_y(stress, degree);
+
+//         if (fabs(stress[k] / load->intensity) > threshold)
+//         {
+//         // printf("%zu/%zu, (%.2f, %.2f, %.2f), %.3e\n", i, n_side, btm_pt.x, btm_pt.y, btm_pt.z, fabs(stress[k] / load->intensity));
+//         len_side += h_default;
+//         btm_not_exceed = 0;
+//         break;
+//         }
+//         }
+//         }
+
+//         printf("%-8sIteration %d, ", "[INFO]", iter);
+//         printf("x: %d, y: %d\n", side_not_exceed, btm_not_exceed);
+
+//         } while ((side_not_exceed && !(len_btm < h_default)) || (btm_not_exceed && !(len_side < h_default)));
+
+//         printf("%-8sBackward calculation, return %d, %d, %d, %d\n", "[INFO]", side_not_exceed, btm_not_exceed, len_side < h_default, len_btm < h_default);
+//         }
+//         else
+//         {
+//         printf("%-8sBackward calculation of the simulated boundary area for stress %zu3 ...\n", "[INFO]", (5 - k));
+
+//         do
+//         {
+//         if (side_not_exceed)
+//         {
+//         len_btm -= h_default;
+//         }
+
+//         if (btm_not_exceed)
+//         {
+//         len_side -= h_default;
+//         }
+
+//         size_t nstep_side = (size_t)(len_side / h_default);
+//         size_t nstep_btm = (size_t)(len_btm / h_default);
+
+//         double h_side = len_side / (double)nstep_side;
+//         double h_btm = len_btm / (double)nstep_btm;
+
+//         size_t n_side = nstep_side;
+//         size_t n_btm = nstep_btm + 1;
+
+//         iter += 1;
+
+//         if (side_not_exceed)
+//         {
+//         for (size_t i = 0; i < n_side; i++)
+//         {
+//         double stress[6] = {0.0};
+
+//         tmk_vec3 side_pt = {0.0, 0.0, 0.0};
+
+//         side_pt.x = -1.0 * ((double)i * h_side) * cos(-1.0 * radian);
+//         side_pt.y = len_btm;
+//         side_pt.z = -1.0 * ((double)i * h_side) * sin(-1.0 * radian);
+
+//         tmk__coefficients_distributed_stress(stress, &side_pt, load, halfspace);
+//         cblas_dscal(6, load->intensity, stress, 1);
+//         tmk__coefficients_tensor_transformation_y(stress, degree);
+
+//         if (fabs(stress[k] / load->intensity) > threshold)
+//         {
+//         side_not_exceed = 0;
+//         len_btm += h_default;
+//         break;
+//         }
+//         }
+//         }
+
+//         if (btm_not_exceed)
+//         {
+//         for (size_t i = 0; i < n_btm; i++)
+//         {
+//         double stress[6] = {0.0};
+
+//         tmk_vec3 btm_pt = {0.0, 0.0, 0.0};
+
+//         btm_pt.x = -1.0 * len_side * cos(-1.0 * radian);
+//         btm_pt.y = (double)i * h_btm;
+//         btm_pt.z = -1.0 * len_side * sin(-1.0 * radian);
+
+//         tmk__coefficients_distributed_stress(stress, &btm_pt, load, halfspace);
+//         cblas_dscal(6, load->intensity, stress, 1);
+//         tmk__coefficients_tensor_transformation_y(stress, degree);
+
+//         if (fabs(stress[k] / load->intensity) > threshold)
+//         {
+//         btm_not_exceed = 0;
+//         len_side += h_default;
+//         break;
+//         }
+//         }
+//         }
+
+//         printf("%-8sIteration %d, ", "[INFO]", iter);
+//         printf("x: %d, y: %d\n", side_not_exceed, btm_not_exceed);
+
+//         } while (side_not_exceed || btm_not_exceed);
+
+//         printf("%-8sBackward calculation, return %d, %d\n", "[INFO]", side_not_exceed, btm_not_exceed);
+//         }
+
+//         if (len_side > *len_side_final)
+//         {
+//         *len_side_final = len_side;
+//         }
+
+//         if (len_btm > *len_btm_final)
+//         {
+//         *len_btm_final = len_btm;
+//         }
+
+//         printf("\n%-8sTest for stress %zu3 finished after iteration %d\n", "[INFO]", (5 - k), iter);
+//         printf("%-8sFor stress %zu3, required domain of calculation is: x = %.1f [mm], y = %.1f [mm], viewed perpendicular to the area\n\n", "[INFO]", (5 - k), len_side, len_btm);
+//         }
+//         printf("%-8sFinal result: x = %.1f [mm], y = %.1f [mm]\n", "[INFO]", *len_side_final, *len_btm_final);
+// }
 
 #endif // TAAMAK_IMPLEMENTATION
 
